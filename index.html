@@ -920,6 +920,8 @@
     const ADMIN_ID = 'admin'
     const DEFAULT_PIN = '0000'
     const ADMIN_PIN = '910130'
+    const DEFAULT_SUPABASE_URL = 'https://tesyabznqpqekbosvidf.supabase.co'
+    const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3lhYnpucXBxZWtib3N2aWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MDI0OTYsImV4cCI6MjA5NTI3ODQ5Nn0.9md-SvBOcR6xbs2KRbBEcIrFHOYWwDpov_yRCe1tm7E'
 
     const DEFAULT_DOCTORS = [
       { id: 'doctor-01', name: '최보빈', role: 'doctor', incentiveRate: 10 },
@@ -1067,9 +1069,16 @@
       return String(url || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
     }
 
+    function getSupabaseConfig() {
+      const savedConfig = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}')
+      return {
+        url: normalizeSupabaseUrl(savedConfig.url || DEFAULT_SUPABASE_URL),
+        anonKey: savedConfig.anonKey || DEFAULT_SUPABASE_ANON_KEY,
+      }
+    }
+
     function loadConfig() {
-      const config = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}')
-      config.url = normalizeSupabaseUrl(config.url)
+      const config = getSupabaseConfig()
       document.getElementById('supabaseUrl').value = config.url || ''
       document.getElementById('supabaseAnonKey').value = config.anonKey || ''
       createSupabaseClient(config)
