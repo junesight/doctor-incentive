@@ -1172,7 +1172,7 @@
     }
 
     function isValidNewPassword(value) {
-      return /^[A-Za-z0-9]{4,}$/.test(value) && /[A-Za-z]/.test(value) && /[0-9]/.test(value)
+      return /^[A-Za-z0-9]{6,}$/.test(value)
     }
 
     function loadState() {
@@ -1556,7 +1556,7 @@
         return
       }
       if (!isValidNewPassword(newPassword)) {
-        alert('새 비밀번호는 4글자 이상 영문과 숫자를 함께 사용해주세요.')
+        alert('새 비밀번호는 6자리 이상 영문 또는 숫자로 입력해주세요.')
         return
       }
       if (newPassword !== confirmPassword) {
