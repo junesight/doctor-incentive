@@ -314,6 +314,14 @@
       justify-content: flex-start;
     }
 
+    .password-change-form {
+      border-top: 1px solid var(--line);
+      margin-top: 4px;
+      padding-top: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
     .split-entry {
       display: grid;
       grid-template-columns: repeat(2, minmax(260px, 1fr));
@@ -546,7 +554,7 @@
         </label>
         <label>
           간단 비밀번호
-          <input id="loginPin" type="password" inputmode="numeric" placeholder="" />
+          <input id="loginPin" type="password" placeholder="" />
         </label>
         <button class="btn primary" onclick="login()">입장</button>
         <span class="muted">실서비스에서는 Supabase Auth와 RLS로 계정별 데이터 접근을 막아야 합니다.</span>
@@ -632,7 +640,7 @@
         <div id="lindaLoginBox" class="auth-form">
           <label>
             관리자 비밀번호
-            <input id="lindaLoginPin" type="password" inputmode="numeric" placeholder="" />
+            <input id="lindaLoginPin" type="password" placeholder="" />
           </label>
           <div class="form-actions">
             <button class="btn primary" onclick="loginProtectedArea('linda')">입력 화면 열기</button>
@@ -706,14 +714,33 @@
         <div id="personalLoginBox" class="auth-form">
           <label>
             원장님
-            <select id="personalLoginDoctor"></select>
+            <select id="personalLoginDoctor" onchange="updatePersonalPasswordButton()"></select>
           </label>
           <label>
             비밀번호
-            <input id="personalLoginPin" type="password" inputmode="numeric" placeholder="" />
+            <input id="personalLoginPin" type="password" placeholder="" />
           </label>
           <div class="form-actions">
             <button class="btn primary" onclick="loginProtectedArea('personal')">확인</button>
+            <button id="personalPasswordChangeButton" class="btn hidden" onclick="showPasswordChangeForm('personal')">비번 변경</button>
+          </div>
+          <div id="personalPasswordChangeForm" class="password-change-form hidden">
+            <label>
+              기존 비밀번호
+              <input id="personalOldPassword" type="password" />
+            </label>
+            <label>
+              새 비밀번호
+              <input id="personalNewPassword" type="password" />
+            </label>
+            <label>
+              새 비밀번호 확인
+              <input id="personalNewPasswordConfirm" type="password" />
+            </label>
+            <div class="form-actions">
+              <button class="btn primary" onclick="changePassword('personal')">저장</button>
+              <button class="btn" onclick="hidePasswordChangeForm('personal')">취소</button>
+            </div>
           </div>
         </div>
         <div id="personalRecordsContent" class="hidden">
@@ -768,7 +795,7 @@
         <div id="adminLoginBox" class="auth-form">
           <label>
             관리자 비밀번호
-            <input id="adminLoginPin" type="password" inputmode="numeric" placeholder="" />
+            <input id="adminLoginPin" type="password" placeholder="" />
           </label>
           <div class="form-actions">
             <button class="btn primary" onclick="loginProtectedArea('admin')">관리자 확인</button>
@@ -822,10 +849,29 @@
         <div id="payrollLoginBox" class="auth-form">
           <label>
             급여관리자 비밀번호
-            <input id="payrollLoginPin" type="password" inputmode="numeric" placeholder="" />
+            <input id="payrollLoginPin" type="password" placeholder="" />
           </label>
           <div class="form-actions">
             <button class="btn primary" onclick="loginProtectedArea('payroll')">인센티브 확인</button>
+            <button class="btn" onclick="showPasswordChangeForm('payroll')">비번 변경</button>
+          </div>
+          <div id="payrollPasswordChangeForm" class="password-change-form hidden">
+            <label>
+              기존 비밀번호
+              <input id="payrollOldPassword" type="password" />
+            </label>
+            <label>
+              새 비밀번호
+              <input id="payrollNewPassword" type="password" />
+            </label>
+            <label>
+              새 비밀번호 확인
+              <input id="payrollNewPasswordConfirm" type="password" />
+            </label>
+            <div class="form-actions">
+              <button class="btn primary" onclick="changePassword('payroll')">저장</button>
+              <button class="btn" onclick="hidePasswordChangeForm('payroll')">취소</button>
+            </div>
           </div>
         </div>
         <div id="summaryContent" class="hidden">
@@ -855,7 +901,7 @@
         <div id="settingsLoginBox" class="auth-form">
           <label>
             관리자 비밀번호
-            <input id="settingsLoginPin" type="password" inputmode="numeric" placeholder="" />
+            <input id="settingsLoginPin" type="password" placeholder="" />
           </label>
           <div class="form-actions">
             <button class="btn primary" onclick="loginProtectedArea('settings')">관리자 설정 열기</button>
@@ -863,6 +909,38 @@
         </div>
         <div id="settingsContent" class="hidden">
         <div class="panel" style="margin-top:0;">
+          <div class="panel-head">
+            <div>
+              <h3 class="panel-title">비밀번호 관리</h3>
+            </div>
+          </div>
+          <div class="entry-form">
+            <div class="form-actions">
+              <button class="btn" onclick="showPasswordChangeForm('admin')">관리자 비번 변경</button>
+              <button class="btn" onclick="showPasswordChangeForm('master')">마스터키 변경</button>
+            </div>
+          </div>
+          <div id="adminPasswordChangeForm" class="password-change-form hidden">
+            <label>기존 비밀번호<input id="adminOldPassword" type="password" /></label>
+            <label>새 비밀번호<input id="adminNewPassword" type="password" /></label>
+            <label>새 비밀번호 확인<input id="adminNewPasswordConfirm" type="password" /></label>
+            <div class="form-actions">
+              <button class="btn primary" onclick="changePassword('admin')">저장</button>
+              <button class="btn" onclick="hidePasswordChangeForm('admin')">취소</button>
+            </div>
+          </div>
+          <div id="masterPasswordChangeForm" class="password-change-form hidden">
+            <label>기존 마스터키<input id="masterOldPassword" type="password" /></label>
+            <label>새 마스터키<input id="masterNewPassword" type="password" /></label>
+            <label>새 마스터키 확인<input id="masterNewPasswordConfirm" type="password" /></label>
+            <div class="form-actions">
+              <button class="btn primary" onclick="changePassword('master')">저장</button>
+              <button class="btn" onclick="hidePasswordChangeForm('master')">취소</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
           <div class="panel-head">
             <div>
               <h3 class="panel-title">원장님 관리</h3>
@@ -916,10 +994,10 @@
     const CONFIG_KEY = 'bubu_precision_counter_config_v1'
     const DOCTORS_KEY = 'bubu_doctor_incentive_doctors_v1'
     const PROCEDURE_RATES_KEY = 'bubu_doctor_incentive_rates_v1'
+    const PASSWORD_HASHES_KEY = 'bubu_doctor_incentive_password_hashes_v1'
     const SETTINGS_TABLE = 'app_settings'
     const ADMIN_ID = 'admin'
     const DEFAULT_PIN = '0000'
-    const ADMIN_PIN = '910130'
     const DEFAULT_SUPABASE_URL = 'https://tesyabznqpqekbosvidf.supabase.co'
     const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3lhYnpucXBxZWtib3N2aWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MDI0OTYsImV4cCI6MjA5NTI3ODQ5Nn0.9md-SvBOcR6xbs2KRbBEcIrFHOYWwDpov_yRCe1tm7E'
 
@@ -941,6 +1019,7 @@
 
     let doctors = loadDoctors()
     let procedureRates = loadProcedureRates()
+    let passwordHashes = loadPasswordHashes()
 
     function getUsers() {
       return [
@@ -1046,6 +1125,56 @@
       localStorage.setItem(PROCEDURE_RATES_KEY, JSON.stringify(procedureRates))
     }
 
+    function getDefaultPasswordHashes() {
+      return {
+        roles: { admin: null, master: null, payroll: null },
+        doctors: Object.fromEntries(doctors.map((doctor) => [doctor.id, null])),
+      }
+    }
+
+    function normalizePasswordHashes(value = {}) {
+      const defaults = getDefaultPasswordHashes()
+      return {
+        roles: { ...defaults.roles, ...(value.roles || {}) },
+        doctors: { ...defaults.doctors, ...(value.doctors || {}) },
+      }
+    }
+
+    function loadPasswordHashes() {
+      try {
+        return normalizePasswordHashes(JSON.parse(localStorage.getItem(PASSWORD_HASHES_KEY) || '{}'))
+      } catch (error) {
+        return normalizePasswordHashes()
+      }
+    }
+
+    function savePasswordHashesToStorage() {
+      passwordHashes = normalizePasswordHashes(passwordHashes)
+      localStorage.setItem(PASSWORD_HASHES_KEY, JSON.stringify(passwordHashes))
+    }
+
+    async function hashPassword(value) {
+      const bytes = new TextEncoder().encode(`bubu-doctor-incentive:${value}`)
+      const digest = await crypto.subtle.digest('SHA-256', bytes)
+      return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('')
+    }
+
+    async function checkRolePassword(role, pin) {
+      passwordHashes = normalizePasswordHashes(passwordHashes)
+      const storedHash = passwordHashes.roles[role]
+      return storedHash ? await hashPassword(pin) === storedHash : pin === DEFAULT_PIN
+    }
+
+    async function checkDoctorPassword(doctorId, pin) {
+      passwordHashes = normalizePasswordHashes(passwordHashes)
+      const storedHash = passwordHashes.doctors[doctorId]
+      return storedHash ? await hashPassword(pin) === storedHash : pin === DEFAULT_PIN
+    }
+
+    function isValidNewPassword(value) {
+      return /^[A-Za-z0-9]{4,}$/.test(value) && /[A-Za-z]/.test(value) && /[0-9]/.test(value)
+    }
+
     function loadState() {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (!saved) return
@@ -1082,7 +1211,7 @@
       document.getElementById('supabaseUrl').value = config.url || ''
       document.getElementById('supabaseAnonKey').value = config.anonKey || ''
       createSupabaseClient(config)
-      syncSilently()
+      if (supabaseClient) syncNow({ silent: true, pullSettingsFirst: true })
     }
 
     function createSupabaseClient(config) {
@@ -1117,6 +1246,7 @@
         { key: 'doctors', value: doctors, updated_at: new Date().toISOString() },
         { key: 'procedure_rates', value: procedureRates, updated_at: new Date().toISOString() },
         { key: 'finalized_months', value: state.finalizedMonths, updated_at: new Date().toISOString() },
+        { key: 'password_hashes', value: normalizePasswordHashes(passwordHashes), updated_at: new Date().toISOString() },
       ]
     }
 
@@ -1135,6 +1265,12 @@
       if (Array.isArray(settings.get('finalized_months'))) {
         state.finalizedMonths = settings.get('finalized_months')
       }
+      if (settings.get('password_hashes')) {
+        passwordHashes = normalizePasswordHashes(settings.get('password_hashes'))
+      } else {
+        passwordHashes = normalizePasswordHashes(passwordHashes)
+      }
+      savePasswordHashesToStorage()
     }
 
     function syncSilently() {
@@ -1166,6 +1302,16 @@
       }
 
       setSyncStatus('동기화 중', 'yellow')
+
+      if (options.pullSettingsFirst) {
+        const { data: firstSettingsRows, error: firstSettingsError } = await supabaseClient
+          .from(SETTINGS_TABLE)
+          .select('*')
+
+        if (!firstSettingsError) {
+          applyRemoteSettings(firstSettingsRows)
+        }
+      }
 
       if (state.entries.length) {
         const payload = state.entries.map((entry) => ({
@@ -1283,11 +1429,13 @@
       ].join('')
     }
 
-    function login() {
+    async function login() {
       const userId = document.getElementById('loginUser').value
       const pin = document.getElementById('loginPin').value
-      const expectedPin = userId === ADMIN_ID ? ADMIN_PIN : DEFAULT_PIN
-      if (pin && pin !== expectedPin) {
+      const allowed = userId === ADMIN_ID
+        ? await checkRolePassword('admin', pin) || await checkRolePassword('master', pin)
+        : pin === DEFAULT_PIN
+      if (pin && !allowed) {
         alert(userId === ADMIN_ID ? '관리자 비밀번호를 확인해주세요.' : '초기 비밀번호는 0000입니다.')
         return
       }
@@ -1324,7 +1472,7 @@
       document.getElementById('loginPin').value = ''
     }
 
-    function loginProtectedArea(type) {
+    async function loginProtectedArea(type) {
       const config = {
         personal: { pinId: 'personalLoginPin', boxId: 'personalLoginBox', contentId: 'personalRecordsContent' },
         linda: { pinId: 'lindaLoginPin', boxId: 'lindaLoginBox', contentId: 'lindaContent' },
@@ -1335,12 +1483,8 @@
 
       if (!config) return
 
+      const pin = document.getElementById(config.pinId).value
       const adminTypes = ['admin', 'settings', 'linda']
-      const expectedPin = adminTypes.includes(type) ? ADMIN_PIN : DEFAULT_PIN
-      if (document.getElementById(config.pinId).value !== expectedPin) {
-        alert(adminTypes.includes(type) ? '관리자 비밀번호를 확인해주세요.' : '초기 비밀번호는 0000입니다.')
-        return
-      }
 
       if (type === 'personal') {
         const doctorId = document.getElementById('personalLoginDoctor').value
@@ -1348,9 +1492,20 @@
           alert('원장님을 선택해주세요.')
           return
         }
+        if (!await checkDoctorPassword(doctorId, pin)) {
+          alert('비밀번호를 확인해주세요.')
+          return
+        }
         state.auth.personalDoctorId = doctorId
         state.currentUser = getDoctor(doctorId)
       } else {
+        const allowed = adminTypes.includes(type)
+          ? await checkRolePassword('admin', pin) || await checkRolePassword('master', pin)
+          : await checkRolePassword('payroll', pin) || await checkRolePassword('master', pin)
+        if (!allowed) {
+          alert(adminTypes.includes(type) ? '관리자 비밀번호를 확인해주세요.' : '급여관리자 비밀번호를 확인해주세요.')
+          return
+        }
         state.auth[type] = true
         state.currentUser = { id: type, name: type, role: type }
       }
@@ -1358,6 +1513,66 @@
       document.getElementById(config.boxId).classList.add('hidden')
       document.getElementById(config.contentId).classList.remove('hidden')
       renderAll()
+    }
+
+    function updatePersonalPasswordButton() {
+      const button = document.getElementById('personalPasswordChangeButton')
+      if (!button) return
+      button.classList.toggle('hidden', !document.getElementById('personalLoginDoctor').value)
+    }
+
+    function showPasswordChangeForm(type) {
+      if (type === 'personal' && !document.getElementById('personalLoginDoctor').value) {
+        alert('원장님을 먼저 선택해주세요.')
+        return
+      }
+      document.getElementById(`${type}PasswordChangeForm`).classList.remove('hidden')
+    }
+
+    function hidePasswordChangeForm(type) {
+      document.getElementById(`${type}PasswordChangeForm`).classList.add('hidden')
+      for (const suffix of ['OldPassword', 'NewPassword', 'NewPasswordConfirm']) {
+        const input = document.getElementById(`${type}${suffix}`)
+        if (input) input.value = ''
+      }
+    }
+
+    async function changePassword(type) {
+      const oldPassword = document.getElementById(`${type}OldPassword`).value
+      const newPassword = document.getElementById(`${type}NewPassword`).value
+      const confirmPassword = document.getElementById(`${type}NewPasswordConfirm`).value
+      const doctorId = type === 'personal' ? document.getElementById('personalLoginDoctor').value : null
+      const role = type === 'payroll' || type === 'admin' || type === 'master' ? type : null
+      const oldPasswordOk = type === 'personal'
+        ? await checkDoctorPassword(doctorId, oldPassword)
+        : await checkRolePassword(role, oldPassword)
+
+      if (type === 'personal' && !doctorId) {
+        alert('원장님을 먼저 선택해주세요.')
+        return
+      }
+      if (!oldPasswordOk) {
+        alert('기존 비밀번호를 확인해주세요.')
+        return
+      }
+      if (!isValidNewPassword(newPassword)) {
+        alert('새 비밀번호는 4글자 이상 영문과 숫자를 함께 사용해주세요.')
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        alert('새 비밀번호 확인이 일치하지 않습니다.')
+        return
+      }
+
+      if (type === 'personal') {
+        passwordHashes.doctors[doctorId] = await hashPassword(newPassword)
+      } else {
+        passwordHashes.roles[role] = await hashPassword(newPassword)
+      }
+      savePasswordHashesToStorage()
+      syncSilently()
+      hidePasswordChangeForm(type)
+      alert('비밀번호가 변경되었습니다.')
     }
 
     function setView(view) {
@@ -1687,8 +1902,8 @@
                 <td><input id="adminInlineCount-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.count || ''}" /></td>
                 <td><input id="adminInlineRevenue-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.revenue || ''}" /></td>
                 <td><input id="adminInlinePlacenta-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.placentaDinaCount || ''}" placeholder="" /></td>
-                <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
-                <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+                <td><input id="adminInlineLinda-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.lindaRevenue || ''}" /></td>
+                <td><input id="adminInlineSu-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.suRevenue || ''}" /></td>
                 <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
                 <td>
                   <div class="inline-actions">
@@ -1747,8 +1962,8 @@
               <td><input id="adminEntryCount-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.count || ''}" /></td>
               <td><input id="adminEntryRevenue-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.revenue || ''}" /></td>
               <td><input id="adminEntryPlacenta-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.placentaDinaCount || ''}" placeholder="" /></td>
-              <td class="right">${formatWon(entry.lindaRevenue)}</td>
-              <td class="right">${formatWon(entry.suRevenue)}</td>
+              <td><input id="adminEntryLinda-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.lindaRevenue || ''}" /></td>
+              <td><input id="adminEntrySu-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.suRevenue || ''}" /></td>
               <td class="right">${formatWon(getIncentive(entry))}</td>
               <td>${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
               <td>
@@ -1890,7 +2105,7 @@
     function editAdminDate(doctorId, date) {
       state.inlineEditDate = `admin:${doctorId}:${date}`
       renderAdminRecords()
-      const ids = [`adminInlineCount-${date}`, `adminInlineRevenue-${date}`, `adminInlinePlacenta-${date}`]
+      const ids = [`adminInlineCount-${date}`, `adminInlineRevenue-${date}`, `adminInlinePlacenta-${date}`, `adminInlineLinda-${date}`, `adminInlineSu-${date}`]
       for (const id of ids) {
         const input = document.getElementById(id)
         if (!input) continue
@@ -1904,7 +2119,7 @@
     function editAdminEntry(entryId) {
       state.inlineEditDate = `adminEntry:${entryId}`
       renderAdminRecords()
-      const ids = [`adminEntryCount-${entryId}`, `adminEntryRevenue-${entryId}`, `adminEntryPlacenta-${entryId}`]
+      const ids = [`adminEntryCount-${entryId}`, `adminEntryRevenue-${entryId}`, `adminEntryPlacenta-${entryId}`, `adminEntryLinda-${entryId}`, `adminEntrySu-${entryId}`]
       for (const id of ids) {
         const input = document.getElementById(id)
         if (!input) continue
@@ -1988,21 +2203,18 @@
       const count = toDigits(document.getElementById(`adminInlineCount-${date}`).value)
       const revenue = toDigits(document.getElementById(`adminInlineRevenue-${date}`).value)
       const placentaDinaCount = toDigits(document.getElementById(`adminInlinePlacenta-${date}`).value)
-
-      if (!count || !revenue) {
-        alert('대용량정밀약침 시술 건수와 대용량정밀약침 매출은 숫자만 입력해주세요.')
-        return
-      }
+      const lindaRevenue = toDigits(document.getElementById(`adminInlineLinda-${date}`).value)
+      const suRevenue = toDigits(document.getElementById(`adminInlineSu-${date}`).value)
 
       const existingEntry = state.entries.find((item) => item.doctorId === doctorId && item.date === date)
       const nextEntry = {
         id: existingEntry?.id || crypto.randomUUID(),
         date,
         doctorId,
-        count: Number(count),
-        revenue: Number(revenue),
-        lindaRevenue: existingEntry?.lindaRevenue || 0,
-        suRevenue: existingEntry?.suRevenue || 0,
+        count: Number(count || 0),
+        revenue: Number(revenue || 0),
+        lindaRevenue: Number(lindaRevenue || 0),
+        suRevenue: Number(suRevenue || 0),
         placentaDinaCount: Number(placentaDinaCount || 0),
         memo: '',
         createdAt: existingEntry?.createdAt || new Date().toISOString(),
@@ -2029,17 +2241,16 @@
       const count = toDigits(document.getElementById(`adminEntryCount-${entryId}`).value)
       const revenue = toDigits(document.getElementById(`adminEntryRevenue-${entryId}`).value)
       const placentaDinaCount = toDigits(document.getElementById(`adminEntryPlacenta-${entryId}`).value)
-
-      if (!count || !revenue) {
-        alert('대용량정밀약침 시술 건수와 대용량정밀약침 매출은 숫자만 입력해주세요.')
-        return
-      }
+      const lindaRevenue = toDigits(document.getElementById(`adminEntryLinda-${entryId}`).value)
+      const suRevenue = toDigits(document.getElementById(`adminEntrySu-${entryId}`).value)
 
       const nextEntry = {
         ...existingEntry,
-        count: Number(count),
-        revenue: Number(revenue),
+        count: Number(count || 0),
+        revenue: Number(revenue || 0),
         placentaDinaCount: Number(placentaDinaCount || 0),
+        lindaRevenue: Number(lindaRevenue || 0),
+        suRevenue: Number(suRevenue || 0),
         updatedAt: new Date().toISOString(),
       }
 
@@ -2200,6 +2411,7 @@
       bindEnterLogin('adminLoginPin', 'admin')
       bindEnterLogin('payrollLoginPin', 'payroll')
       bindEnterLogin('settingsLoginPin', 'settings')
+      updatePersonalPasswordButton()
       loadConfig()
       renderAll()
     }
