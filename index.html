@@ -1,0 +1,2201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>목포 부부한의원 의료진 인센티브 관리</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --line: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --green: #16a34a;
+      --green-soft: #dcfce7;
+      --red: #dc2626;
+      --red-soft: #fee2e2;
+      --yellow: #ca8a04;
+      --yellow-soft: #fef3c7;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+    }
+
+    .sidebar {
+      background: #111827;
+      color: white;
+      padding: 24px 18px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.1);
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .brand-title {
+      color: #d1d5db;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.25;
+      white-space: nowrap;
+    }
+
+    .brand-clinic {
+      color: #d1d5db;
+      font-size: 13px;
+      font-weight: 900;
+      margin-bottom: 2px;
+      white-space: nowrap;
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .nav button {
+      border: 0;
+      width: 100%;
+      text-align: left;
+      padding: 12px 14px;
+      border-radius: 12px;
+      color: #d1d5db;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .nav button.active,
+    .nav button:hover {
+      background: rgba(255,255,255,0.1);
+      color: white;
+    }
+
+    .profile-panel {
+      border-top: 1px solid rgba(255,255,255,0.12);
+      padding-top: 18px;
+      display: grid;
+      gap: 8px;
+      color: #d1d5db;
+      font-size: 13px;
+    }
+
+    .main {
+      padding: 28px;
+      overflow: auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .page-description {
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .actions, .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 800;
+      min-height: 42px;
+    }
+
+    .btn:hover { box-shadow: var(--shadow); }
+
+    .btn.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    .btn.danger {
+      background: var(--red);
+      border-color: var(--red);
+      color: white;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .cards {
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 26px;
+      font-weight: 900;
+    }
+
+    .card-foot {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-top: 16px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .panel-note {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-action {
+      min-height: 42px;
+      padding: 10px 14px;
+      margin-bottom: 0;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    input, select, textarea {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: white;
+      color: var(--text);
+      min-height: 42px;
+    }
+
+    textarea {
+      min-height: 42px;
+      resize: vertical;
+    }
+
+    .entry-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .form-actions {
+      grid-column: 1 / -1;
+    }
+
+    .auth-form {
+      width: min(480px, 100%);
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .auth-form .form-actions {
+      grid-column: auto;
+      justify-content: flex-start;
+    }
+
+    .split-entry {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(260px, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+
+    .split-entry-form {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .split-entry {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 920px;
+      background: white;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .monthly-table {
+      table-layout: fixed;
+      min-width: 1060px;
+    }
+
+    .monthly-table th,
+    .monthly-table td {
+      padding: 3px 7px;
+      font-size: 13px;
+    }
+
+    .monthly-table th {
+      padding: 6px 7px;
+      font-size: 13px;
+    }
+
+    .monthly-table input {
+      width: 100%;
+      min-height: 26px;
+      padding: 2px 6px;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .col-date { width: 112px; }
+    .col-count { width: 118px; }
+    .col-money { width: 148px; }
+    .col-incentive { width: 148px; }
+    .col-actions { width: 128px; }
+
+    .inline-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .inline-actions .btn {
+      min-height: 26px;
+      padding: 3px 7px;
+      font-size: 13px;
+    }
+
+    .monthly-total-row td {
+      background: #fff7ed;
+      color: #9a3412;
+      font-weight: 900;
+      border-bottom: 2px solid #fdba74;
+      padding-top: 9px;
+      padding-bottom: 9px;
+      font-size: 13px;
+    }
+
+    .summary-pivot {
+      table-layout: fixed;
+      min-width: 980px;
+    }
+
+    .summary-pivot th,
+    .summary-pivot td {
+      padding: 9px 10px;
+      font-size: 13px;
+    }
+
+    .summary-pivot .metric-col {
+      width: 190px;
+      background: #f9fafb;
+      font-weight: 900;
+    }
+
+    .summary-pivot th.metric-col {
+      text-align: center;
+    }
+
+    .summary-pivot .summary-total-col {
+      background: #f3f4f6;
+      font-weight: 900;
+    }
+
+    .summary-pivot .total-row td {
+      background: #fff7ed;
+      color: #9a3412;
+      font-weight: 900;
+      border-top: 2px solid #fdba74;
+    }
+
+    .summary-pivot .section-divider td {
+      border-bottom: 3px solid #9ca3af;
+    }
+
+    .summary-pivot .revenue-total-row td {
+      background: #ecfdf5;
+      color: #166534;
+      font-weight: 900;
+      border-top: 3px solid #9ca3af;
+    }
+
+    th {
+      background: #f9fafb;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    tbody tr:hover { background: #f9fafb; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .badge.green { color: var(--green); background: var(--green-soft); }
+    .badge.blue { color: var(--primary); background: var(--primary-soft); }
+    .badge.yellow { color: var(--yellow); background: var(--yellow-soft); }
+    .badge.red { color: var(--red); background: var(--red-soft); }
+
+    .doctor-badge {
+      color: #111827;
+      background: #eef2ff;
+    }
+
+    .doctor-color-0 { background: #dbeafe; color: #1e40af; }
+    .doctor-color-1 { background: #dcfce7; color: #166534; }
+    .doctor-color-2 { background: #fef3c7; color: #92400e; }
+    .doctor-color-3 { background: #fce7f3; color: #9d174d; }
+    .doctor-color-4 { background: #ede9fe; color: #5b21b6; }
+    .doctor-color-5 { background: #ccfbf1; color: #0f766e; }
+
+    .login-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: var(--bg);
+    }
+
+    .login-box {
+      width: min(520px, 100%);
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .login-box h1 { font-size: 24px; margin-bottom: 8px; }
+
+    .login-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .hidden { display: none !important; }
+    .muted { color: var(--muted); }
+    .right { text-align: right; }
+
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+      }
+      .main { padding: 18px; }
+      .topbar { display: grid; }
+      .actions { justify-content: flex-start; }
+      .cards { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+      .entry-form { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .cards { grid-template-columns: 1fr; }
+      .entry-form { grid-template-columns: 1fr; }
+      h1 { font-size: 23px; }
+    }
+  </style>
+</head>
+<body>
+  <section id="loginScreen" class="login-screen hidden">
+    <div class="login-box">
+      <h1>목포 부부한의원<br />의료진 인센티브 관리</h1>
+      <p class="page-description">오늘 퇴근 전 입력할 원장님을 선택해주세요. 총괄 계정은 전체 집계와 모든 입력 내역을 볼 수 있습니다.</p>
+      <div class="login-grid">
+        <label>
+          사용자
+          <select id="loginUser"></select>
+        </label>
+        <label>
+          간단 비밀번호
+          <input id="loginPin" type="password" inputmode="numeric" placeholder="" />
+        </label>
+        <button class="btn primary" onclick="login()">입장</button>
+        <span class="muted">실서비스에서는 Supabase Auth와 RLS로 계정별 데이터 접근을 막아야 합니다.</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="app" class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">💌</div>
+        <div>
+          <div class="brand-clinic">목포 부부한의원</div>
+          <div class="brand-title">의료진 인센티브 관리</div>
+          <div class="brand-subtitle">Doctor Incentive Manager v1.0</div>
+        </div>
+      </div>
+      <div class="nav">
+        <button id="navInput" class="active" onclick="setView('input')">일일 약침 입력</button>
+        <button id="navLinda" onclick="setView('linda')">린다/수 매출 입력</button>
+        <button id="navRecords" onclick="setView('records')">월별 내역 개인 확인</button>
+        <button id="navAdminRecords" onclick="setView('adminRecords')">관리자 확인</button>
+        <button id="navSummary" onclick="setView('summary')">인센티브 확인</button>
+        <button id="navSettings" onclick="setView('settings')">관리자 설정</button>
+      </div>
+      <div class="profile-panel">
+        <span id="syncStatus" class="badge yellow">로컬 모드</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h1>목포 부부한의원<br />의료진 인센티브 관리</h1>
+          <div class="page-description">Doctor Incentive Manager v1.0</div>
+        </div>
+        <div class="actions">
+          <button class="btn primary" onclick="syncNow()">Supabase 동기화</button>
+        </div>
+      </div>
+
+      <section id="viewInput" class="panel">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">약침 입력</h2>
+          </div>
+        </div>
+        <form class="entry-form" onsubmit="saveEntry(event)">
+          <label id="doctorField">
+            원장님
+            <select id="entryDoctor" required></select>
+          </label>
+          <label>
+            날짜
+            <input id="entryDate" type="date" required />
+          </label>
+          <label>
+            대용량정밀약침 시술 건수
+            <input id="entryCount" type="text" inputmode="numeric" pattern="[0-9]*" required placeholder="" />
+          </label>
+          <label>
+            대용량정밀약침 매출
+            <input id="entryRevenue" type="text" inputmode="numeric" pattern="[0-9]*" required placeholder="" />
+          </label>
+          <label>
+            자하거/디나 시술 건수
+            <input id="entryPlacentaDinaCount" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="" />
+          </label>
+          <div class="form-actions">
+            <button class="btn" type="button" onclick="resetForm()">초기화</button>
+            <button class="btn primary" type="submit">제출</button>
+          </div>
+          <div id="saveNotice" class="badge green hidden">제출 완료</div>
+        </form>
+      </section>
+
+      <section id="viewLinda" class="panel hidden">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">린다이어트/수한약 입력</h2>
+          </div>
+        </div>
+        <div id="lindaLoginBox" class="auth-form">
+          <label>
+            관리자 비밀번호
+            <input id="lindaLoginPin" type="password" inputmode="numeric" placeholder="" />
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" onclick="loginProtectedArea('linda')">입력 화면 열기</button>
+          </div>
+        </div>
+        <div id="lindaContent" class="hidden">
+          <div class="split-entry">
+            <div class="panel" style="margin-top:0;">
+              <div class="panel-head">
+                <div>
+                  <h3 class="panel-title">린다이어트 매출 입력</h3>
+                </div>
+              </div>
+              <form class="split-entry-form" onsubmit="saveLindaEntry(event, 'linda')">
+                <label>
+                  원장님
+                  <select id="lindaDoctor" required></select>
+                </label>
+                <label>
+                  날짜
+                  <input id="lindaDate" type="date" required />
+                </label>
+                <label>
+                  린다이어트 매출
+                  <input id="lindaRevenue" type="text" inputmode="numeric" pattern="[0-9]*" required placeholder="" />
+                </label>
+                <div class="form-actions">
+                  <button class="btn" type="button" onclick="resetLindaForm('linda', true)">초기화</button>
+                  <button class="btn primary" type="submit">저장</button>
+                </div>
+                <div id="lindaSaveNotice" class="badge green hidden">린다이어트 매출 합산 저장 완료</div>
+              </form>
+            </div>
+
+            <div class="panel" style="margin-top:0;">
+              <div class="panel-head">
+                <div>
+                  <h3 class="panel-title">수 한약 매출 입력</h3>
+                </div>
+              </div>
+              <form class="split-entry-form" onsubmit="saveLindaEntry(event, 'su')">
+                <label>
+                  원장님
+                  <select id="suDoctor" required></select>
+                </label>
+                <label>
+                  날짜
+                  <input id="suDate" type="date" required />
+                </label>
+                <label>
+                  수 한약 매출
+                  <input id="suRevenue" type="text" inputmode="numeric" pattern="[0-9]*" required placeholder="" />
+                </label>
+                <div class="form-actions">
+                  <button class="btn" type="button" onclick="resetLindaForm('su', true)">초기화</button>
+                  <button class="btn primary" type="submit">저장</button>
+                </div>
+                <div id="suSaveNotice" class="badge green hidden">수 한약 매출 합산 저장 완료</div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="viewRecords" class="panel hidden">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">월별 내역 개인 확인</h2>
+          </div>
+        </div>
+        <div id="personalLoginBox" class="auth-form">
+          <label>
+            원장님
+            <select id="personalLoginDoctor"></select>
+          </label>
+          <label>
+            비밀번호
+            <input id="personalLoginPin" type="password" inputmode="numeric" placeholder="" />
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" onclick="loginProtectedArea('personal')">확인</button>
+          </div>
+        </div>
+        <div id="personalRecordsContent" class="hidden">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <label>
+              월
+              <input id="recordMonth" type="month" onchange="renderAll()" />
+            </label>
+            <button class="btn primary toolbar-action" onclick="confirmPersonalMonth()">월 최종 내역 확인 완료</button>
+          </div>
+          <div class="toolbar-right">
+            <span id="recordCountLabel" class="badge blue">0개 내역</span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="monthly-table">
+            <colgroup>
+              <col class="col-date" />
+              <col class="col-count" />
+              <col class="col-money" />
+              <col class="col-count" />
+              <col class="col-money" />
+              <col class="col-money" />
+              <col class="col-incentive" />
+              <col class="col-actions" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th class="right">대용량정밀약침 건수</th>
+                <th class="right">대용량정밀약침 매출</th>
+                <th class="right">자하거/디나 건수</th>
+                <th class="right">린다이어트 매출</th>
+                <th class="right">수 한약 매출</th>
+                <th class="right">예상 인센티브</th>
+                <th>수정</th>
+              </tr>
+            </thead>
+            <tbody id="recordRows"></tbody>
+          </table>
+        </div>
+        </div>
+      </section>
+
+      <section id="viewAdminRecords" class="panel hidden">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">관리자 확인</h2>
+          </div>
+        </div>
+        <div id="adminLoginBox" class="auth-form">
+          <label>
+            관리자 비밀번호
+            <input id="adminLoginPin" type="password" inputmode="numeric" placeholder="" />
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" onclick="loginProtectedArea('admin')">관리자 확인</button>
+          </div>
+        </div>
+        <div id="adminRecordsContent" class="hidden">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <label>
+                월
+                <input id="adminRecordMonth" type="month" onchange="renderAll()" />
+              </label>
+              <label>
+                원장님
+                <select id="adminDoctorFilter" onchange="renderAll()"></select>
+              </label>
+            </div>
+            <div class="toolbar-right">
+              <span id="adminRecordCountLabel" class="badge blue">0개 내역</span>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="adminRecordTable">
+              <colgroup id="adminRecordCols"></colgroup>
+              <thead id="adminRecordHead">
+                <tr>
+                  <th>날짜</th>
+                  <th>원장님</th>
+                  <th class="right">대용량정밀약침 건수</th>
+                  <th class="right">대용량정밀약침 매출</th>
+                  <th class="right">자하거/디나 건수</th>
+                  <th class="right">린다이어트 매출</th>
+                  <th class="right">수 한약 매출</th>
+                  <th class="right">예상 인센티브</th>
+                  <th>입력 시간</th>
+                  <th>관리</th>
+                </tr>
+              </thead>
+              <tbody id="adminRecordRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="viewSummary" class="panel hidden">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">인센티브 확인</h2>
+          </div>
+        </div>
+        <div id="payrollLoginBox" class="auth-form">
+          <label>
+            급여관리자 비밀번호
+            <input id="payrollLoginPin" type="password" inputmode="numeric" placeholder="" />
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" onclick="loginProtectedArea('payroll')">인센티브 확인</button>
+          </div>
+        </div>
+        <div id="summaryContent" class="hidden">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <label>
+              월
+              <input id="summaryMonth" type="month" onchange="renderAll()" />
+            </label>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="summary-pivot">
+            <thead id="summaryHead"></thead>
+            <tbody id="summaryRows"></tbody>
+          </table>
+        </div>
+        </div>
+      </section>
+
+      <section id="viewSettings" class="panel hidden">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">관리자 설정</h2>
+          </div>
+        </div>
+        <div id="settingsLoginBox" class="auth-form">
+          <label>
+            관리자 비밀번호
+            <input id="settingsLoginPin" type="password" inputmode="numeric" placeholder="" />
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" onclick="loginProtectedArea('settings')">관리자 설정 열기</button>
+          </div>
+        </div>
+        <div id="settingsContent" class="hidden">
+        <div class="panel" style="margin-top:0;">
+          <div class="panel-head">
+            <div>
+              <h3 class="panel-title">원장님 관리</h3>
+            </div>
+          </div>
+          <div class="entry-form">
+            <label>
+              원장님 이름
+              <input id="newDoctorName" placeholder="예: 홍길동" />
+            </label>
+            <div class="form-actions">
+              <button class="btn primary" onclick="addDoctor()">원장님 추가</button>
+            </div>
+          </div>
+          <div id="doctorManageList" class="grid" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3 class="panel-title">시술 항목별 인센티브</h3>
+            </div>
+          </div>
+          <div id="procedureManageList" class="entry-form"></div>
+          <div class="form-actions" style="margin-top:12px;">
+            <button class="btn primary" onclick="saveProcedureRates()">인센티브 % 저장</button>
+          </div>
+        </div>
+
+        <div class="entry-form">
+          <label class="wide">
+            Supabase URL
+            <input id="supabaseUrl" placeholder="https://프로젝트.supabase.co" />
+          </label>
+          <label class="wide">
+            Supabase anon key
+            <input id="supabaseAnonKey" placeholder="public anon key" />
+          </label>
+          <div class="form-actions">
+            <button class="btn" onclick="saveSupabaseConfig()">설정 저장</button>
+            <button class="btn primary" onclick="syncNow()">동기화 테스트</button>
+          </div>
+        </div>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <script>
+    const STORAGE_KEY = 'bubu_doctor_incentive_manager_v1'
+    const CONFIG_KEY = 'bubu_precision_counter_config_v1'
+    const DOCTORS_KEY = 'bubu_doctor_incentive_doctors_v1'
+    const PROCEDURE_RATES_KEY = 'bubu_doctor_incentive_rates_v1'
+    const SETTINGS_TABLE = 'app_settings'
+    const ADMIN_ID = 'admin'
+    const DEFAULT_PIN = '0000'
+    const ADMIN_PIN = '910130'
+
+    const DEFAULT_DOCTORS = [
+      { id: 'doctor-01', name: '최보빈', role: 'doctor', incentiveRate: 10 },
+      { id: 'doctor-02', name: '김준현', role: 'doctor', incentiveRate: 10 },
+      { id: 'doctor-03', name: '김영윤', role: 'doctor', incentiveRate: 10 },
+      { id: 'doctor-04', name: '박지현', role: 'doctor', incentiveRate: 10 },
+      { id: 'doctor-05', name: '안태윤', role: 'doctor', incentiveRate: 10 },
+      { id: 'doctor-06', name: '황두호', role: 'doctor', incentiveRate: 10 },
+    ]
+
+    const DEFAULT_PROCEDURE_RATES = {
+      precisionInjection: 10,
+      placentaDina: 0,
+      linda: 10,
+      su: 5,
+    }
+
+    let doctors = loadDoctors()
+    let procedureRates = loadProcedureRates()
+
+    function getUsers() {
+      return [
+        { id: ADMIN_ID, name: '총괄 관리자', role: 'admin', incentiveRate: 0 },
+        ...doctors,
+      ]
+    }
+
+    let state = {
+      currentUser: null,
+      view: 'input',
+      entries: [],
+      editingId: null,
+      inlineEditDate: null,
+      finalizedMonths: [],
+      auth: {
+        personalDoctorId: null,
+        admin: false,
+        payroll: false,
+        settings: false,
+        linda: false,
+      },
+    }
+
+    let supabaseClient = null
+
+    function todayString() {
+      const now = new Date()
+      const timezoneOffset = now.getTimezoneOffset() * 60000
+      return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 10)
+    }
+
+    function monthString(date = todayString()) {
+      return date.slice(0, 7)
+    }
+
+    function getDatesInMonth(month) {
+      const [year, monthNumber] = month.split('-').map(Number)
+      const lastDay = new Date(year, monthNumber, 0).getDate()
+      return Array.from({ length: lastDay }, (_, index) => `${month}-${String(index + 1).padStart(2, '0')}`)
+    }
+
+    function formatWon(value) {
+      return Number(value || 0).toLocaleString('ko-KR') + '원'
+    }
+
+    function formatDateTime(value) {
+      if (!value) return '-'
+      return new Date(value).toLocaleString('ko-KR', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    }
+
+    function getDoctor(doctorId) {
+      return doctors.find((doctor) => doctor.id === doctorId) || { id: doctorId, name: '삭제된 원장님', incentiveRate: 10 }
+    }
+
+    function getIncentive(entry) {
+      return getPrecisionIncentive(entry) + getLindaIncentive(entry) + getSuIncentive(entry)
+    }
+
+    function getPrecisionIncentive(entry) {
+      return Math.round(Number(entry.revenue || 0) * (Number(procedureRates.precisionInjection || 0) / 100))
+    }
+
+    function getLindaIncentive(entry) {
+      return Math.round(Number(entry.lindaRevenue || 0) * (Number(procedureRates.linda || 0) / 100))
+    }
+
+    function getSuIncentive(entry) {
+      return Math.round(Number(entry.suRevenue || 0) * (Number(procedureRates.su || 0) / 100))
+    }
+
+    function getDoctorColorClass(doctorId) {
+      const index = Math.max(0, doctors.findIndex((doctor) => doctor.id === doctorId))
+      return `doctor-color-${index % 6}`
+    }
+
+    function loadDoctors() {
+      try {
+        return JSON.parse(localStorage.getItem(DOCTORS_KEY) || 'null') || [...DEFAULT_DOCTORS]
+      } catch (error) {
+        return [...DEFAULT_DOCTORS]
+      }
+    }
+
+    function saveDoctors() {
+      localStorage.setItem(DOCTORS_KEY, JSON.stringify(doctors))
+    }
+
+    function loadProcedureRates() {
+      try {
+        return { ...DEFAULT_PROCEDURE_RATES, ...(JSON.parse(localStorage.getItem(PROCEDURE_RATES_KEY) || '{}')) }
+      } catch (error) {
+        return { ...DEFAULT_PROCEDURE_RATES }
+      }
+    }
+
+    function saveProcedureRatesToStorage() {
+      localStorage.setItem(PROCEDURE_RATES_KEY, JSON.stringify(procedureRates))
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return
+      try {
+        const parsed = JSON.parse(saved)
+        state.entries = parsed.entries || []
+        state.finalizedMonths = parsed.finalizedMonths || []
+      } catch (error) {
+        console.warn('저장된 데이터를 불러오지 못했습니다.', error)
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        entries: state.entries,
+        finalizedMonths: state.finalizedMonths,
+      }))
+    }
+
+    function normalizeSupabaseUrl(url) {
+      return String(url || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
+    }
+
+    function loadConfig() {
+      const config = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}')
+      config.url = normalizeSupabaseUrl(config.url)
+      document.getElementById('supabaseUrl').value = config.url || ''
+      document.getElementById('supabaseAnonKey').value = config.anonKey || ''
+      createSupabaseClient(config)
+      syncSilently()
+    }
+
+    function createSupabaseClient(config) {
+      const url = normalizeSupabaseUrl(config.url)
+      if (!url || !config.anonKey || !window.supabase) {
+        supabaseClient = null
+        return
+      }
+      supabaseClient = window.supabase.createClient(url, config.anonKey)
+      setSyncStatus('Supabase 준비됨', 'green')
+    }
+
+    function saveSupabaseConfig() {
+      const config = {
+        url: normalizeSupabaseUrl(document.getElementById('supabaseUrl').value),
+        anonKey: document.getElementById('supabaseAnonKey').value.trim(),
+      }
+      document.getElementById('supabaseUrl').value = config.url
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(config))
+      createSupabaseClient(config)
+      alert('동기화 설정을 저장했습니다.')
+    }
+
+    function setSyncStatus(label, tone = 'yellow') {
+      const target = document.getElementById('syncStatus')
+      target.textContent = label
+      target.className = `badge ${tone}`
+    }
+
+    function getSettingsPayload() {
+      return [
+        { key: 'doctors', value: doctors, updated_at: new Date().toISOString() },
+        { key: 'procedure_rates', value: procedureRates, updated_at: new Date().toISOString() },
+        { key: 'finalized_months', value: state.finalizedMonths, updated_at: new Date().toISOString() },
+      ]
+    }
+
+    function applyRemoteSettings(rows) {
+      const settings = new Map((rows || []).map((row) => [row.key, row.value]))
+      if (Array.isArray(settings.get('doctors'))) {
+        doctors = settings.get('doctors')
+        saveDoctors()
+        populateDoctorOptions()
+        populateLogin()
+      }
+      if (settings.get('procedure_rates')) {
+        procedureRates = { ...DEFAULT_PROCEDURE_RATES, ...settings.get('procedure_rates') }
+        saveProcedureRatesToStorage()
+      }
+      if (Array.isArray(settings.get('finalized_months'))) {
+        state.finalizedMonths = settings.get('finalized_months')
+      }
+    }
+
+    function syncSilently() {
+      if (!supabaseClient) return
+      syncNow({ silent: true })
+    }
+
+    async function deleteRemoteEntry(entryId) {
+      if (!supabaseClient) return
+      const { error } = await supabaseClient
+        .from('precision_injection_entries')
+        .delete()
+        .eq('id', entryId)
+
+      if (error) {
+        console.error(error)
+        setSyncStatus('동기화 실패', 'red')
+        return
+      }
+      syncSilently()
+    }
+
+    async function syncNow(options = {}) {
+      const silent = options.silent === true
+      if (!supabaseClient) {
+        setSyncStatus('로컬 모드', 'yellow')
+        if (!silent) alert('Supabase URL과 anon key를 먼저 입력해주세요.')
+        return
+      }
+
+      setSyncStatus('동기화 중', 'yellow')
+
+      if (state.entries.length) {
+        const payload = state.entries.map((entry) => ({
+          id: entry.id,
+          date: entry.date,
+          doctor_id: entry.doctorId,
+          treatment_count: entry.count,
+          placenta_dina_count: entry.placentaDinaCount || 0,
+          revenue: entry.revenue,
+          linda_revenue: entry.lindaRevenue || 0,
+          su_revenue: entry.suRevenue || 0,
+          memo: entry.memo || '',
+          created_at: entry.createdAt,
+          updated_at: entry.updatedAt,
+        }))
+
+        const { error } = await supabaseClient
+          .from('precision_injection_entries')
+          .upsert(payload, { onConflict: 'id' })
+
+        if (error) {
+          console.error(error)
+          setSyncStatus('동기화 실패', 'red')
+          if (!silent) alert('Supabase 저장에 실패했습니다. SQL 스키마와 RLS 설정을 확인해주세요.')
+          return
+        }
+      }
+
+      const { error: settingsError } = await supabaseClient
+        .from(SETTINGS_TABLE)
+        .upsert(getSettingsPayload(), { onConflict: 'key' })
+
+      if (settingsError) {
+        console.error(settingsError)
+        setSyncStatus('동기화 실패', 'red')
+        if (!silent) alert('Supabase 설정 저장에 실패했습니다. app_settings 테이블을 확인해주세요.')
+        return
+      }
+
+      const { data, error: loadError } = await supabaseClient
+        .from('precision_injection_entries')
+        .select('*')
+        .order('date', { ascending: false })
+
+      if (loadError) {
+        console.error(loadError)
+        setSyncStatus('동기화 실패', 'red')
+        if (!silent) alert('Supabase 데이터를 불러오지 못했습니다. SQL 스키마와 RLS 설정을 확인해주세요.')
+        return
+      }
+
+      const { data: settingsRows, error: settingsLoadError } = await supabaseClient
+        .from(SETTINGS_TABLE)
+        .select('*')
+
+      if (settingsLoadError) {
+        console.error(settingsLoadError)
+        setSyncStatus('동기화 실패', 'red')
+        if (!silent) alert('Supabase 설정을 불러오지 못했습니다. app_settings 테이블을 확인해주세요.')
+        return
+      }
+
+      state.entries = (data || []).map((entry) => ({
+        id: entry.id,
+        date: entry.date,
+        doctorId: entry.doctor_id,
+        count: entry.treatment_count,
+        placentaDinaCount: entry.placenta_dina_count || 0,
+        revenue: entry.revenue,
+        lindaRevenue: entry.linda_revenue || 0,
+        suRevenue: entry.su_revenue || 0,
+        memo: entry.memo || '',
+        createdAt: entry.created_at,
+        updatedAt: entry.updated_at,
+      }))
+      applyRemoteSettings(settingsRows)
+      saveState()
+      renderAll()
+      setSyncStatus('동기화 완료', 'green')
+      if (!silent) alert('Supabase 저장 및 불러오기를 완료했습니다.')
+    }
+
+    function populateLogin() {
+      const loginUser = document.getElementById('loginUser')
+      loginUser.innerHTML = getUsers().map((user) => (
+        `<option value="${user.id}">${user.name}${user.role === 'admin' ? ' · 총괄' : ''}</option>`
+      )).join('')
+    }
+
+    function populateDoctorOptions() {
+      const entryDoctor = document.getElementById('entryDoctor')
+      entryDoctor.innerHTML = [
+        '<option value="" selected disabled></option>',
+        ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
+      ].join('')
+
+      document.getElementById('lindaDoctor').innerHTML = [
+        '<option value="" selected disabled></option>',
+        ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
+      ].join('')
+
+      document.getElementById('suDoctor').innerHTML = [
+        '<option value="" selected disabled></option>',
+        ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
+      ].join('')
+
+      document.getElementById('personalLoginDoctor').innerHTML = [
+        '<option value="" selected disabled></option>',
+        ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
+      ].join('')
+
+      document.getElementById('adminDoctorFilter').innerHTML = [
+        '<option value="all">전체</option>',
+        ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
+      ].join('')
+    }
+
+    function login() {
+      const userId = document.getElementById('loginUser').value
+      const pin = document.getElementById('loginPin').value
+      const expectedPin = userId === ADMIN_ID ? ADMIN_PIN : DEFAULT_PIN
+      if (pin && pin !== expectedPin) {
+        alert(userId === ADMIN_ID ? '관리자 비밀번호를 확인해주세요.' : '초기 비밀번호는 0000입니다.')
+        return
+      }
+
+      state.currentUser = getUsers().find((user) => user.id === userId)
+      document.getElementById('loginScreen').classList.add('hidden')
+      document.getElementById('app').classList.remove('hidden')
+      document.getElementById('profileName').textContent = state.currentUser.name
+      document.getElementById('profileRole').textContent = state.currentUser.role === 'admin' ? '총괄 계정' : '원장님 계정'
+
+      const isAdmin = state.currentUser.role === 'admin'
+      document.getElementById('doctorField').classList.toggle('hidden', !isAdmin)
+      document.getElementById('navSettings').classList.toggle('hidden', !isAdmin)
+
+      if (!isAdmin) {
+        document.getElementById('entryDoctor').value = state.currentUser.id
+      }
+
+      resetForm()
+      renderAll()
+    }
+
+    function logout() {
+      state.currentUser = null
+      state.auth = {
+        personalDoctorId: null,
+        admin: false,
+        payroll: false,
+        settings: false,
+        linda: false,
+      }
+      document.getElementById('app').classList.add('hidden')
+      document.getElementById('loginScreen').classList.remove('hidden')
+      document.getElementById('loginPin').value = ''
+    }
+
+    function loginProtectedArea(type) {
+      const config = {
+        personal: { pinId: 'personalLoginPin', boxId: 'personalLoginBox', contentId: 'personalRecordsContent' },
+        linda: { pinId: 'lindaLoginPin', boxId: 'lindaLoginBox', contentId: 'lindaContent' },
+        admin: { pinId: 'adminLoginPin', boxId: 'adminLoginBox', contentId: 'adminRecordsContent' },
+        payroll: { pinId: 'payrollLoginPin', boxId: 'payrollLoginBox', contentId: 'summaryContent' },
+        settings: { pinId: 'settingsLoginPin', boxId: 'settingsLoginBox', contentId: 'settingsContent' },
+      }[type]
+
+      if (!config) return
+
+      const adminTypes = ['admin', 'settings', 'linda']
+      const expectedPin = adminTypes.includes(type) ? ADMIN_PIN : DEFAULT_PIN
+      if (document.getElementById(config.pinId).value !== expectedPin) {
+        alert(adminTypes.includes(type) ? '관리자 비밀번호를 확인해주세요.' : '초기 비밀번호는 0000입니다.')
+        return
+      }
+
+      if (type === 'personal') {
+        const doctorId = document.getElementById('personalLoginDoctor').value
+        if (!doctorId) {
+          alert('원장님을 선택해주세요.')
+          return
+        }
+        state.auth.personalDoctorId = doctorId
+        state.currentUser = getDoctor(doctorId)
+      } else {
+        state.auth[type] = true
+        state.currentUser = { id: type, name: type, role: type }
+      }
+
+      document.getElementById(config.boxId).classList.add('hidden')
+      document.getElementById(config.contentId).classList.remove('hidden')
+      renderAll()
+    }
+
+    function setView(view) {
+      state.view = view
+      for (const name of ['input', 'linda', 'records', 'adminRecords', 'summary', 'settings']) {
+        document.getElementById(`view${name[0].toUpperCase() + name.slice(1)}`).classList.toggle('hidden', name !== view)
+        document.getElementById(`nav${name[0].toUpperCase() + name.slice(1)}`).classList.toggle('active', name === view)
+      }
+      renderAll()
+    }
+
+    function resetForm() {
+      state.editingId = null
+      document.getElementById('entryDoctor').value = ''
+      document.getElementById('entryDate').value = todayString()
+      document.getElementById('entryCount').value = ''
+      document.getElementById('entryRevenue').value = ''
+      document.getElementById('entryPlacentaDinaCount').value = ''
+      document.getElementById('saveNotice').classList.add('hidden')
+    }
+
+    function toDigits(value) {
+      return String(value || '').replace(/\D/g, '')
+    }
+
+    function saveEntry(event) {
+      event.preventDefault()
+      const doctorId = document.getElementById('entryDoctor').value
+      const count = toDigits(document.getElementById('entryCount').value)
+      const revenue = toDigits(document.getElementById('entryRevenue').value)
+      const placentaDinaCount = toDigits(document.getElementById('entryPlacentaDinaCount').value)
+
+      if (!doctorId) {
+        alert('원장님을 선택해주세요.')
+        return
+      }
+
+      if (!count || !revenue) {
+        alert('대용량정밀약침 시술 건수와 대용량정밀약침 매출은 숫자만 입력해주세요.')
+        return
+      }
+
+      const date = document.getElementById('entryDate').value
+      const previousEntry = state.editingId
+        ? state.entries.find((entry) => entry.id === state.editingId)
+        : state.entries.find((entry) => entry.doctorId === doctorId && entry.date === date)
+      const nextEntry = {
+        id: previousEntry?.id || crypto.randomUUID(),
+        date,
+        doctorId,
+        count: Number(count),
+        placentaDinaCount: Number(placentaDinaCount || 0),
+        revenue: Number(revenue),
+        lindaRevenue: previousEntry?.lindaRevenue || 0,
+        suRevenue: previousEntry?.suRevenue || 0,
+        memo: '',
+        createdAt: previousEntry?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      if (previousEntry) {
+        state.entries = state.entries.map((entry) => entry.id === previousEntry.id ? nextEntry : entry)
+      } else {
+        state.entries.push(nextEntry)
+      }
+
+      saveState()
+      resetForm()
+      renderAll()
+      syncSilently()
+      document.getElementById('saveNotice').classList.remove('hidden')
+    }
+
+    function resetLindaForm(type, clearDoctor = false) {
+      const ids = type === 'su'
+        ? { doctor: 'suDoctor', date: 'suDate', revenue: 'suRevenue', notice: 'suSaveNotice' }
+        : { doctor: 'lindaDoctor', date: 'lindaDate', revenue: 'lindaRevenue', notice: 'lindaSaveNotice' }
+
+      if (clearDoctor) {
+        document.getElementById(ids.doctor).value = ''
+      }
+      document.getElementById(ids.date).value = todayString()
+      document.getElementById(ids.revenue).value = ''
+      document.getElementById(ids.notice).classList.add('hidden')
+    }
+
+    function saveLindaEntry(event, type) {
+      event.preventDefault()
+      const ids = type === 'su'
+        ? { doctor: 'suDoctor', date: 'suDate', revenue: 'suRevenue', notice: 'suSaveNotice' }
+        : { doctor: 'lindaDoctor', date: 'lindaDate', revenue: 'lindaRevenue', notice: 'lindaSaveNotice' }
+      const doctorId = document.getElementById(ids.doctor).value
+      const date = document.getElementById(ids.date).value
+      const revenue = Number(toDigits(document.getElementById(ids.revenue).value) || 0)
+
+      if (!doctorId) {
+        alert('원장님을 선택해주세요.')
+        return
+      }
+
+      if (!revenue) {
+        alert(type === 'su' ? '수 한약 매출을 입력해주세요.' : '린다이어트 매출을 입력해주세요.')
+        return
+      }
+
+      const existingEntry = state.entries.find((entry) => entry.doctorId === doctorId && entry.date === date)
+      const lindaRevenue = type === 'linda' ? revenue : 0
+      const suRevenue = type === 'su' ? revenue : 0
+      const nextEntry = {
+        id: existingEntry?.id || crypto.randomUUID(),
+        date,
+        doctorId,
+        count: existingEntry?.count || 0,
+        placentaDinaCount: existingEntry?.placentaDinaCount || 0,
+        revenue: existingEntry?.revenue || 0,
+        lindaRevenue: Number(existingEntry?.lindaRevenue || 0) + lindaRevenue,
+        suRevenue: Number(existingEntry?.suRevenue || 0) + suRevenue,
+        memo: existingEntry?.memo || '',
+        createdAt: existingEntry?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      if (existingEntry) {
+        state.entries = state.entries.map((entry) => entry.id === existingEntry.id ? nextEntry : entry)
+      } else {
+        state.entries.push(nextEntry)
+      }
+
+      saveState()
+      syncSilently()
+      document.getElementById(ids.revenue).value = ''
+      document.getElementById(ids.date).value = todayString()
+      document.getElementById(ids.notice).classList.remove('hidden')
+      renderAll()
+    }
+
+    function canSee(entry) {
+      if (!state.currentUser) return false
+      return state.auth.admin || entry.doctorId === state.auth.personalDoctorId
+    }
+
+    function getVisibleEntries() {
+      const selectedMonth = document.getElementById('recordMonth').value || monthString()
+
+      return state.entries
+        .filter((entry) => entry.doctorId === state.auth.personalDoctorId)
+        .filter((entry) => entry.date.startsWith(selectedMonth))
+        .sort((a, b) => `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`))
+    }
+
+    function getAdminEntries() {
+      const selectedMonth = document.getElementById('adminRecordMonth').value || monthString()
+      const selectedDoctor = document.getElementById('adminDoctorFilter').value || 'all'
+
+      return state.entries
+        .filter((entry) => entry.date.startsWith(selectedMonth))
+        .filter((entry) => selectedDoctor === 'all' || entry.doctorId === selectedDoctor)
+        .sort((a, b) => `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`))
+    }
+
+    function getMonthlyTotals(entries) {
+      return entries.reduce((totals, entry) => {
+        totals.count += Number(entry.count || 0)
+        totals.revenue += Number(entry.revenue || 0)
+        totals.placentaDinaCount += Number(entry.placentaDinaCount || 0)
+        totals.lindaRevenue += Number(entry.lindaRevenue || 0)
+        totals.suRevenue += Number(entry.suRevenue || 0)
+        totals.incentive += getIncentive(entry)
+        return totals
+      }, {
+        count: 0,
+        revenue: 0,
+        placentaDinaCount: 0,
+        lindaRevenue: 0,
+        suRevenue: 0,
+        incentive: 0,
+      })
+    }
+
+    function renderMonthlyTotalRow(entries) {
+      const totals = getMonthlyTotals(entries)
+      return `
+        <tr class="monthly-total-row">
+          <td>월 합계</td>
+          <td class="right">${totals.count.toLocaleString('ko-KR')}건</td>
+          <td class="right">${formatWon(totals.revenue)}</td>
+          <td class="right">${totals.placentaDinaCount.toLocaleString('ko-KR')}건</td>
+          <td class="right">${formatWon(totals.lindaRevenue)}</td>
+          <td class="right">${formatWon(totals.suRevenue)}</td>
+          <td class="right">${formatWon(totals.incentive)}</td>
+          <td></td>
+        </tr>
+      `
+    }
+
+    function getFinalizedKey(doctorId, month) {
+      return `${doctorId}:${month}`
+    }
+
+    function isPersonalMonthFinalized(month = document.getElementById('recordMonth').value || monthString()) {
+      return state.finalizedMonths.includes(getFinalizedKey(state.auth.personalDoctorId, month))
+    }
+
+    function isMonthFinished(month) {
+      const dates = getDatesInMonth(month)
+      const lastDate = dates[dates.length - 1]
+      return todayString() > lastDate
+    }
+
+    function confirmPersonalMonth() {
+      const doctorId = state.auth.personalDoctorId
+      const month = document.getElementById('recordMonth').value || monthString()
+      if (!doctorId) return
+
+      if (!isMonthFinished(month)) {
+        alert('아직 입력이 완료되지 않았습니다.')
+        return
+      }
+
+      if (isPersonalMonthFinalized(month)) {
+        alert('이미 최종 확정된 월입니다.')
+        return
+      }
+
+      if (!confirm('확인을 누르시면 최종 확정되어 수정이 불가합니다.')) return
+
+      state.finalizedMonths.push(getFinalizedKey(doctorId, month))
+      state.inlineEditDate = null
+      saveState()
+      syncSilently()
+      renderRecords()
+    }
+
+    function renderRecords() {
+      if (!state.auth.personalDoctorId) return
+      const selectedMonth = document.getElementById('recordMonth').value || monthString()
+      const entries = getVisibleEntries()
+      const entriesByDate = new Map(entries.map((entry) => [entry.date, entry]))
+      const dates = getDatesInMonth(selectedMonth)
+      const finalized = isPersonalMonthFinalized(selectedMonth)
+      document.getElementById('recordCountLabel').textContent = finalized
+        ? `${selectedMonth} · 최종 확정 완료`
+        : `${selectedMonth} · ${entries.length.toLocaleString('ko-KR')}일 입력`
+      document.getElementById('recordRows').innerHTML = renderMonthlyTotalRow(entries) + dates.map((date) => {
+        const entry = entriesByDate.get(date)
+        const isEditing = !finalized && state.inlineEditDate === date
+
+        if (isEditing) {
+          return `
+            <tr>
+              <td>${date}</td>
+              <td><input id="inlineCount-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.count || ''}" /></td>
+              <td><input id="inlineRevenue-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.revenue || ''}" /></td>
+              <td><input id="inlinePlacenta-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.placentaDinaCount || ''}" placeholder="" /></td>
+              <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
+              <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+              <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
+              <td>
+                <div class="inline-actions">
+                  <button class="btn primary" onclick="savePersonalInlineEdit('${date}')">저장</button>
+                  <button class="btn" onclick="cancelPersonalInlineEdit()">취소</button>
+                </div>
+              </td>
+            </tr>
+          `
+        }
+
+        return `
+          <tr>
+            <td>${date}</td>
+            <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '건' : ''}</td>
+            <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
+            <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '건' : ''}</td>
+            <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
+            <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+            <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
+            <td>
+              ${finalized ? '<span class="muted">확정</span>' : `<button class="btn" onclick="editPersonalDate('${date}')">수정</button>`}
+            </td>
+          </tr>
+        `
+      }).join('')
+    }
+
+    function renderAdminRecords() {
+      if (!state.auth.admin) return
+      const selectedMonth = document.getElementById('adminRecordMonth').value || monthString()
+      const selectedDoctor = document.getElementById('adminDoctorFilter').value || 'all'
+      const entries = getAdminEntries()
+
+      if (selectedDoctor !== 'all') {
+        document.getElementById('adminRecordTable').classList.add('monthly-table')
+        document.getElementById('adminRecordCols').innerHTML = `
+          <col class="col-date" />
+          <col class="col-count" />
+          <col class="col-money" />
+          <col class="col-count" />
+          <col class="col-money" />
+          <col class="col-money" />
+          <col class="col-incentive" />
+          <col class="col-actions" />
+        `
+        document.getElementById('adminRecordHead').innerHTML = `
+          <tr>
+            <th>날짜</th>
+            <th class="right">대용량정밀약침 건수</th>
+            <th class="right">대용량정밀약침 매출</th>
+            <th class="right">자하거/디나 건수</th>
+            <th class="right">린다이어트 매출</th>
+            <th class="right">수 한약 매출</th>
+            <th class="right">예상 인센티브</th>
+            <th>수정</th>
+          </tr>
+        `
+        const entriesByDate = new Map(entries.map((entry) => [entry.date, entry]))
+        const dates = getDatesInMonth(selectedMonth)
+        const doctor = getDoctor(selectedDoctor)
+        document.getElementById('adminRecordCountLabel').textContent = `${doctor.name} · ${selectedMonth} · ${entries.length.toLocaleString('ko-KR')}일 입력`
+        document.getElementById('adminRecordRows').innerHTML = renderMonthlyTotalRow(entries) + dates.map((date) => {
+          const entry = entriesByDate.get(date)
+          const isEditing = state.inlineEditDate === `admin:${selectedDoctor}:${date}`
+
+          if (isEditing) {
+            return `
+              <tr>
+                <td>${date}</td>
+                <td><input id="adminInlineCount-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.count || ''}" /></td>
+                <td><input id="adminInlineRevenue-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.revenue || ''}" /></td>
+                <td><input id="adminInlinePlacenta-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.placentaDinaCount || ''}" placeholder="" /></td>
+                <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
+                <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+                <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
+                <td>
+                  <div class="inline-actions">
+                    <button class="btn primary" onclick="saveAdminInlineEdit('${selectedDoctor}', '${date}')">저장</button>
+                    <button class="btn" onclick="cancelInlineEdit('admin')">취소</button>
+                  </div>
+                </td>
+              </tr>
+            `
+          }
+
+          return `
+            <tr>
+              <td>${date}</td>
+              <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '건' : ''}</td>
+              <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
+              <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '건' : ''}</td>
+              <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
+              <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+              <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
+              <td>
+                <button class="btn" onclick="editAdminDate('${selectedDoctor}', '${date}')">수정</button>
+              </td>
+            </tr>
+          `
+        }).join('')
+        return
+      }
+
+      document.getElementById('adminRecordTable').classList.remove('monthly-table')
+      document.getElementById('adminRecordCols').innerHTML = ''
+      document.getElementById('adminRecordHead').innerHTML = `
+        <tr>
+          <th>날짜</th>
+          <th>원장님</th>
+          <th class="right">대용량정밀약침 건수</th>
+          <th class="right">대용량정밀약침 매출</th>
+          <th class="right">자하거/디나 건수</th>
+          <th class="right">린다이어트 매출</th>
+          <th class="right">수 한약 매출</th>
+          <th class="right">예상 인센티브</th>
+          <th>입력 시간</th>
+          <th>관리</th>
+        </tr>
+      `
+      document.getElementById('adminRecordCountLabel').textContent = `${entries.length.toLocaleString('ko-KR')}개 내역`
+      document.getElementById('adminRecordRows').innerHTML = entries.length ? entries.map((entry) => {
+        const doctor = getDoctor(entry.doctorId)
+        const isEditing = state.inlineEditDate === `adminEntry:${entry.id}`
+
+        if (isEditing) {
+          return `
+            <tr>
+              <td>${entry.date}</td>
+              <td><span class="badge doctor-badge ${getDoctorColorClass(entry.doctorId)}">${doctor.name}</span></td>
+              <td><input id="adminEntryCount-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.count || ''}" /></td>
+              <td><input id="adminEntryRevenue-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.revenue || ''}" /></td>
+              <td><input id="adminEntryPlacenta-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.placentaDinaCount || ''}" placeholder="" /></td>
+              <td class="right">${formatWon(entry.lindaRevenue)}</td>
+              <td class="right">${formatWon(entry.suRevenue)}</td>
+              <td class="right">${formatWon(getIncentive(entry))}</td>
+              <td>${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
+              <td>
+                <div class="inline-actions">
+                  <button class="btn primary" onclick="saveAdminEntryInlineEdit('${entry.id}')">저장</button>
+                  <button class="btn" onclick="cancelInlineEdit('admin')">취소</button>
+                </div>
+              </td>
+            </tr>
+          `
+        }
+
+        return `
+          <tr>
+            <td>${entry.date}</td>
+            <td><span class="badge doctor-badge ${getDoctorColorClass(entry.doctorId)}">${doctor.name}</span></td>
+            <td class="right">${Number(entry.count || 0).toLocaleString('ko-KR')}건</td>
+            <td class="right">${formatWon(entry.revenue)}</td>
+            <td class="right">${Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR')}건</td>
+            <td class="right">${formatWon(entry.lindaRevenue)}</td>
+            <td class="right">${formatWon(entry.suRevenue)}</td>
+            <td class="right">${formatWon(getIncentive(entry))}</td>
+            <td>${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
+            <td>
+              <button class="btn" onclick="editAdminEntry('${entry.id}')">수정</button>
+              <button class="btn danger" onclick="deleteEntry('${entry.id}')">삭제</button>
+            </td>
+          </tr>
+        `
+      }).join('') : '<tr><td colspan="10" class="muted">아직 입력된 내역이 없습니다.</td></tr>'
+    }
+
+    function renderSummary() {
+      if (!state.auth.payroll) return
+      const month = document.getElementById('summaryMonth').value || monthString()
+
+      let totals = { count: 0, revenue: 0, placentaDinaCount: 0, lindaRevenue: 0, suRevenue: 0, precision: 0, linda: 0, su: 0, placenta: 0, total: 0 }
+
+      const doctorSummaries = doctors.map((doctor) => {
+        const entries = state.entries
+          .filter((entry) => entry.date.startsWith(month))
+          .filter((entry) => entry.doctorId === doctor.id)
+
+        const count = entries.reduce((sum, entry) => sum + Number(entry.count || 0), 0)
+        const revenue = entries.reduce((sum, entry) => sum + Number(entry.revenue || 0), 0)
+        const placentaDinaCount = entries.reduce((sum, entry) => sum + Number(entry.placentaDinaCount || 0), 0)
+        const lindaRevenue = entries.reduce((sum, entry) => sum + Number(entry.lindaRevenue || 0), 0)
+        const suRevenue = entries.reduce((sum, entry) => sum + Number(entry.suRevenue || 0), 0)
+        const precisionIncentive = Math.round(revenue * (Number(procedureRates.precisionInjection || 0) / 100))
+        const lindaIncentive = Math.round(lindaRevenue * (Number(procedureRates.linda || 0) / 100))
+        const suIncentive = Math.round(suRevenue * (Number(procedureRates.su || 0) / 100))
+        const placentaIncentive = 0
+        const totalIncentive = precisionIncentive + placentaIncentive + lindaIncentive + suIncentive
+
+        totals.count += count
+        totals.revenue += revenue
+        totals.placentaDinaCount += placentaDinaCount
+        totals.lindaRevenue += lindaRevenue
+        totals.suRevenue += suRevenue
+        totals.precision += precisionIncentive
+        totals.linda += lindaIncentive
+        totals.su += suIncentive
+        totals.placenta += placentaIncentive
+        totals.total += totalIncentive
+
+        return {
+          doctor,
+          count,
+          revenue,
+          placentaDinaCount,
+          lindaRevenue,
+          suRevenue,
+          totalRevenue: revenue + lindaRevenue + suRevenue,
+          precisionIncentive,
+          lindaIncentive,
+          suIncentive,
+          placentaIncentive,
+          totalIncentive,
+        }
+      })
+
+      const metrics = [
+        { label: '대용량정밀약침 건수', value: (item) => `${item.count.toLocaleString('ko-KR')}건`, total: `${totals.count.toLocaleString('ko-KR')}건` },
+        { label: '대용량정밀약침 매출', value: (item) => formatWon(item.revenue), total: formatWon(totals.revenue) },
+        { label: '자하거/디나 건수', value: (item) => `${item.placentaDinaCount.toLocaleString('ko-KR')}건`, total: `${totals.placentaDinaCount.toLocaleString('ko-KR')}건` },
+        { label: '린다이어트 매출', value: (item) => formatWon(item.lindaRevenue), total: formatWon(totals.lindaRevenue) },
+        { label: '수 한약 매출', value: (item) => formatWon(item.suRevenue), total: formatWon(totals.suRevenue), divider: true },
+        { label: '대용량정밀약침 인센티브', value: (item) => formatWon(item.precisionIncentive), total: formatWon(totals.precision) },
+        { label: '린다이어트 인센티브', value: (item) => formatWon(item.lindaIncentive), total: formatWon(totals.linda) },
+        { label: '수 한약 인센티브', value: (item) => formatWon(item.suIncentive), total: formatWon(totals.su) },
+        { label: '총 매출', value: (item) => formatWon(item.totalRevenue), total: formatWon(totals.revenue + totals.lindaRevenue + totals.suRevenue), revenueTotal: true },
+        { label: '총 인센티브', value: (item) => formatWon(item.totalIncentive), total: formatWon(totals.total), totalRow: true },
+      ]
+
+      document.getElementById('summaryHead').innerHTML = `
+        <tr>
+          <th class="metric-col">항목</th>
+          ${doctorSummaries.map((item) => `<th class="right">${item.doctor.name}</th>`).join('')}
+          <th class="right summary-total-col">전체 합계</th>
+        </tr>
+      `
+
+      document.getElementById('summaryRows').innerHTML = metrics.map((metric) => `
+        <tr class="${metric.totalRow ? 'total-row' : ''} ${metric.divider ? 'section-divider' : ''} ${metric.revenueTotal ? 'revenue-total-row' : ''}">
+          <td class="metric-col">${metric.label}</td>
+          ${doctorSummaries.map((item) => `<td class="right">${metric.value(item)}</td>`).join('')}
+          <td class="right summary-total-col">${metric.total}</td>
+        </tr>
+      `).join('')
+    }
+
+    function editEntry(entryId) {
+      const entry = state.entries.find((item) => item.id === entryId)
+      if (!entry || !canSee(entry)) return
+      state.editingId = entryId
+      document.getElementById('entryDate').value = entry.date
+      document.getElementById('entryDoctor').value = entry.doctorId
+      document.getElementById('entryCount').value = entry.count
+      document.getElementById('entryRevenue').value = entry.revenue
+      document.getElementById('entryPlacentaDinaCount').value = entry.placentaDinaCount || 0
+      setView('input')
+    }
+
+    function editPersonalDate(date) {
+      if (isPersonalMonthFinalized(date.slice(0, 7))) return
+      state.inlineEditDate = date
+      renderRecords()
+      const ids = [`inlineCount-${date}`, `inlineRevenue-${date}`, `inlinePlacenta-${date}`]
+      for (const id of ids) {
+        const input = document.getElementById(id)
+        if (!input) continue
+        input.addEventListener('input', (event) => {
+          event.target.value = toDigits(event.target.value)
+        })
+      }
+      bindInlineEnter(ids, () => savePersonalInlineEdit(date))
+    }
+
+    function editAdminDate(doctorId, date) {
+      state.inlineEditDate = `admin:${doctorId}:${date}`
+      renderAdminRecords()
+      const ids = [`adminInlineCount-${date}`, `adminInlineRevenue-${date}`, `adminInlinePlacenta-${date}`]
+      for (const id of ids) {
+        const input = document.getElementById(id)
+        if (!input) continue
+        input.addEventListener('input', (event) => {
+          event.target.value = toDigits(event.target.value)
+        })
+      }
+      bindInlineEnter(ids, () => saveAdminInlineEdit(doctorId, date))
+    }
+
+    function editAdminEntry(entryId) {
+      state.inlineEditDate = `adminEntry:${entryId}`
+      renderAdminRecords()
+      const ids = [`adminEntryCount-${entryId}`, `adminEntryRevenue-${entryId}`, `adminEntryPlacenta-${entryId}`]
+      for (const id of ids) {
+        const input = document.getElementById(id)
+        if (!input) continue
+        input.addEventListener('input', (event) => {
+          event.target.value = toDigits(event.target.value)
+        })
+      }
+      bindInlineEnter(ids, () => saveAdminEntryInlineEdit(entryId))
+    }
+
+    function cancelPersonalInlineEdit() {
+      state.inlineEditDate = null
+      renderRecords()
+    }
+
+    function cancelInlineEdit(scope) {
+      state.inlineEditDate = null
+      if (scope === 'admin') {
+        renderAdminRecords()
+        return
+      }
+      renderRecords()
+    }
+
+    function bindInlineEnter(ids, onSave) {
+      for (const id of ids) {
+        const input = document.getElementById(id)
+        if (!input) continue
+        input.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter') return
+          event.preventDefault()
+          onSave()
+        })
+      }
+    }
+
+    function savePersonalInlineEdit(date) {
+      const doctorId = state.auth.personalDoctorId
+      if (!doctorId) return
+      if (isPersonalMonthFinalized(date.slice(0, 7))) return
+
+      const count = toDigits(document.getElementById(`inlineCount-${date}`).value)
+      const revenue = toDigits(document.getElementById(`inlineRevenue-${date}`).value)
+      const placentaDinaCount = toDigits(document.getElementById(`inlinePlacenta-${date}`).value)
+
+      if (!count || !revenue) {
+        alert('대용량정밀약침 시술 건수와 대용량정밀약침 매출은 숫자만 입력해주세요.')
+        return
+      }
+
+      const existingEntry = state.entries.find((item) => item.doctorId === doctorId && item.date === date)
+      const nextEntry = {
+        id: existingEntry?.id || crypto.randomUUID(),
+        date,
+        doctorId,
+        count: Number(count),
+        revenue: Number(revenue),
+        lindaRevenue: existingEntry?.lindaRevenue || 0,
+        suRevenue: existingEntry?.suRevenue || 0,
+        placentaDinaCount: Number(placentaDinaCount || 0),
+        memo: '',
+        createdAt: existingEntry?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      if (existingEntry) {
+        state.entries = state.entries.map((entry) => entry.id === existingEntry.id ? nextEntry : entry)
+      } else {
+        state.entries.push(nextEntry)
+      }
+
+      state.inlineEditDate = null
+      saveState()
+      renderAll()
+      syncSilently()
+    }
+
+    function saveAdminInlineEdit(doctorId, date) {
+      if (!state.auth.admin) return
+
+      const count = toDigits(document.getElementById(`adminInlineCount-${date}`).value)
+      const revenue = toDigits(document.getElementById(`adminInlineRevenue-${date}`).value)
+      const placentaDinaCount = toDigits(document.getElementById(`adminInlinePlacenta-${date}`).value)
+
+      if (!count || !revenue) {
+        alert('대용량정밀약침 시술 건수와 대용량정밀약침 매출은 숫자만 입력해주세요.')
+        return
+      }
+
+      const existingEntry = state.entries.find((item) => item.doctorId === doctorId && item.date === date)
+      const nextEntry = {
+        id: existingEntry?.id || crypto.randomUUID(),
+        date,
+        doctorId,
+        count: Number(count),
+        revenue: Number(revenue),
+        lindaRevenue: existingEntry?.lindaRevenue || 0,
+        suRevenue: existingEntry?.suRevenue || 0,
+        placentaDinaCount: Number(placentaDinaCount || 0),
+        memo: '',
+        createdAt: existingEntry?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      if (existingEntry) {
+        state.entries = state.entries.map((entry) => entry.id === existingEntry.id ? nextEntry : entry)
+      } else {
+        state.entries.push(nextEntry)
+      }
+
+      state.inlineEditDate = null
+      saveState()
+      renderAll()
+      syncSilently()
+    }
+
+    function saveAdminEntryInlineEdit(entryId) {
+      if (!state.auth.admin) return
+      const existingEntry = state.entries.find((entry) => entry.id === entryId)
+      if (!existingEntry) return
+
+      const count = toDigits(document.getElementById(`adminEntryCount-${entryId}`).value)
+      const revenue = toDigits(document.getElementById(`adminEntryRevenue-${entryId}`).value)
+      const placentaDinaCount = toDigits(document.getElementById(`adminEntryPlacenta-${entryId}`).value)
+
+      if (!count || !revenue) {
+        alert('대용량정밀약침 시술 건수와 대용량정밀약침 매출은 숫자만 입력해주세요.')
+        return
+      }
+
+      const nextEntry = {
+        ...existingEntry,
+        count: Number(count),
+        revenue: Number(revenue),
+        placentaDinaCount: Number(placentaDinaCount || 0),
+        updatedAt: new Date().toISOString(),
+      }
+
+      state.entries = state.entries.map((entry) => entry.id === entryId ? nextEntry : entry)
+      state.inlineEditDate = null
+      saveState()
+      renderAll()
+      syncSilently()
+    }
+
+    function deleteEntry(entryId) {
+      const entry = state.entries.find((item) => item.id === entryId)
+      if (!entry || !canSee(entry)) return
+      if (!confirm('이 입력 내역을 삭제할까요?')) return
+      state.entries = state.entries.filter((item) => item.id !== entryId)
+      saveState()
+      renderAll()
+      deleteRemoteEntry(entryId)
+    }
+
+    function exportCsv() {
+      const entries = getVisibleEntries()
+      const header = ['날짜', '원장님', '대용량정밀약침 건수', '대용량정밀약침 매출', '자하거/디나 건수', '예상 인센티브', '메모', '입력시간']
+      const rows = entries.map((entry) => [
+        entry.date,
+        getDoctor(entry.doctorId).name,
+        entry.count,
+        entry.revenue,
+        entry.placentaDinaCount || 0,
+        getIncentive(entry),
+        entry.memo || '',
+        entry.updatedAt || entry.createdAt,
+      ])
+      const csv = [header, ...rows]
+        .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(','))
+        .join('\n')
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `대용량정밀약침_${document.getElementById('recordMonth').value || monthString()}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+
+    function renderAll() {
+      renderRecords()
+      renderAdminRecords()
+      renderSummary()
+      renderDoctorManageList()
+      renderProcedureRates()
+    }
+
+    function addDoctor() {
+      const name = document.getElementById('newDoctorName').value.trim()
+      if (!name) {
+        alert('원장님 이름을 입력해주세요.')
+        return
+      }
+      doctors.push({ id: `doctor-${Date.now()}`, name, role: 'doctor', incentiveRate: 10 })
+      document.getElementById('newDoctorName').value = ''
+      saveDoctors()
+      syncSilently()
+      populateDoctorOptions()
+      populateLogin()
+      renderAll()
+    }
+
+    function deleteDoctor(doctorId) {
+      const doctor = getDoctor(doctorId)
+      if (!confirm(`${doctor.name} 원장님을 삭제할까요? 기존 입력 내역은 남아 있습니다.`)) return
+      doctors = doctors.filter((item) => item.id !== doctorId)
+      saveDoctors()
+      syncSilently()
+      populateDoctorOptions()
+      populateLogin()
+      renderAll()
+    }
+
+    function renderDoctorManageList() {
+      const target = document.getElementById('doctorManageList')
+      if (!target) return
+      target.innerHTML = doctors.map((doctor) => `
+        <div style="border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;justify-content:space-between;gap:12px;align-items:center;">
+          <strong>${doctor.name}</strong>
+          <button class="btn danger" onclick="deleteDoctor('${doctor.id}')">삭제</button>
+        </div>
+      `).join('')
+    }
+
+    function renderProcedureRates() {
+      const target = document.getElementById('procedureManageList')
+      if (!target) return
+      target.innerHTML = `
+        <label>
+          대용량정밀약침 인센티브 %
+          <input id="precisionRate" type="text" inputmode="numeric" pattern="[0-9]*" value="${procedureRates.precisionInjection || 0}" />
+        </label>
+        <label>
+          자하거/디나 인센티브 %
+          <input id="placentaDinaRate" type="text" inputmode="numeric" pattern="[0-9]*" value="${procedureRates.placentaDina || 0}" />
+        </label>
+        <label>
+          린다이어트 인센티브 %
+          <input id="lindaRate" type="text" inputmode="numeric" pattern="[0-9]*" value="${procedureRates.linda || 0}" />
+        </label>
+        <label>
+          수 한약 인센티브 %
+          <input id="suRate" type="text" inputmode="numeric" pattern="[0-9]*" value="${procedureRates.su || 0}" />
+        </label>
+      `
+      for (const id of ['precisionRate', 'placentaDinaRate', 'lindaRate', 'suRate']) {
+        document.getElementById(id).addEventListener('input', (event) => {
+          event.target.value = toDigits(event.target.value)
+        })
+      }
+    }
+
+    function saveProcedureRates() {
+      procedureRates.precisionInjection = Number(toDigits(document.getElementById('precisionRate').value) || 0)
+      procedureRates.placentaDina = Number(toDigits(document.getElementById('placentaDinaRate').value) || 0)
+      procedureRates.linda = Number(toDigits(document.getElementById('lindaRate').value) || 0)
+      procedureRates.su = Number(toDigits(document.getElementById('suRate').value) || 0)
+      saveProcedureRatesToStorage()
+      syncSilently()
+      renderAll()
+      alert('인센티브 %를 저장했습니다.')
+    }
+
+    function bindEnterLogin(inputId, type) {
+      document.getElementById(inputId).addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return
+        event.preventDefault()
+        loginProtectedArea(type)
+      })
+    }
+
+    function initialize() {
+      loadState()
+      populateLogin()
+      populateDoctorOptions()
+      state.currentUser = getUsers().find((user) => user.id === ADMIN_ID)
+      document.getElementById('doctorField').classList.remove('hidden')
+      document.getElementById('navSettings').classList.remove('hidden')
+      document.getElementById('entryDate').value = todayString()
+      document.getElementById('recordMonth').value = monthString()
+      document.getElementById('adminRecordMonth').value = monthString()
+      document.getElementById('summaryMonth').value = monthString()
+      document.getElementById('lindaDate').value = todayString()
+      document.getElementById('suDate').value = todayString()
+      for (const id of ['entryCount', 'entryRevenue', 'entryPlacentaDinaCount', 'lindaRevenue', 'suRevenue']) {
+        document.getElementById(id).addEventListener('input', (event) => {
+          event.target.value = toDigits(event.target.value)
+        })
+      }
+      bindEnterLogin('lindaLoginPin', 'linda')
+      bindEnterLogin('personalLoginPin', 'personal')
+      bindEnterLogin('adminLoginPin', 'admin')
+      bindEnterLogin('payrollLoginPin', 'payroll')
+      bindEnterLogin('settingsLoginPin', 'settings')
+      loadConfig()
+      renderAll()
+    }
+
+    initialize()
+  </script>
+</body>
+</html>
