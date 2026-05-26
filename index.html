@@ -1159,6 +1159,7 @@
       inlineEditDate: null,
       adminBulkEdit: false,
       finalizedMonths: [],
+      adminFinalizedMonths: [],
       auth: {
         personalDoctorId: null,
         admin: false,
@@ -1306,6 +1307,7 @@
         const parsed = JSON.parse(saved)
         state.entries = parsed.entries || []
         state.finalizedMonths = parsed.finalizedMonths || []
+        state.adminFinalizedMonths = parsed.adminFinalizedMonths || []
       } catch (error) {
         console.warn('저장된 데이터를 불러오지 못했습니다.', error)
       }
@@ -1315,6 +1317,7 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         entries: state.entries,
         finalizedMonths: state.finalizedMonths,
+        adminFinalizedMonths: state.adminFinalizedMonths,
       }))
     }
 
@@ -1370,6 +1373,7 @@
         { key: 'doctors', value: doctors, updated_at: new Date().toISOString() },
         { key: 'procedure_rates', value: procedureRates, updated_at: new Date().toISOString() },
         { key: 'finalized_months', value: state.finalizedMonths, updated_at: new Date().toISOString() },
+        { key: 'admin_finalized_months', value: state.adminFinalizedMonths, updated_at: new Date().toISOString() },
         { key: 'password_hashes', value: normalizePasswordHashes(passwordHashes), updated_at: new Date().toISOString() },
       ]
     }
@@ -1388,6 +1392,9 @@
       }
       if (Array.isArray(settings.get('finalized_months'))) {
         state.finalizedMonths = settings.get('finalized_months')
+      }
+      if (Array.isArray(settings.get('admin_finalized_months'))) {
+        state.adminFinalizedMonths = settings.get('admin_finalized_months')
       }
       if (settings.get('password_hashes')) {
         passwordHashes = normalizePasswordHashes(settings.get('password_hashes'))
@@ -2084,6 +2091,10 @@
       return `${doctorId}:${month}`
     }
 
+    function getAdminFinalizedKey(month) {
+      return `admin:${month}`
+    }
+
     function isPersonalMonthFinalized(month = document.getElementById('recordMonth').value || monthString()) {
       return state.finalizedMonths.includes(getFinalizedKey(state.auth.personalDoctorId, month))
     }
@@ -2092,14 +2103,39 @@
       return state.finalizedMonths.includes(getFinalizedKey(doctorId, month))
     }
 
+    function isAdminMonthFinalized(month) {
+      return state.adminFinalizedMonths.includes(getAdminFinalizedKey(month))
+    }
+
     function getFinalizationTargetDoctors() {
       return doctors.filter((doctor) => doctor.id !== 'doctor-01')
     }
 
-    function getAllFinalizedStatusLabel(month) {
+    function areAllDoctorMonthsFinalized(month) {
       const targets = getFinalizationTargetDoctors()
-      const allDone = targets.length > 0 && targets.every((doctor) => isDoctorMonthFinalized(doctor.id, month))
-      return allDone ? '전원 최종 제출이 완료되었습니다.' : '최종 제출이 완료되지 않았습니다.'
+      return targets.length > 0 && targets.every((doctor) => isDoctorMonthFinalized(doctor.id, month))
+    }
+
+    function getAllFinalizedStatusLabel(month) {
+      return areAllDoctorMonthsFinalized(month) ? '전원 최종 제출이 완료되었습니다.' : '최종 제출이 완료되지 않았습니다.'
+    }
+
+    function confirmAdminMonth() {
+      if (!state.auth.admin) return
+      const month = document.getElementById('adminRecordMonth').value || monthString()
+      if (isAdminMonthFinalized(month)) {
+        alert('이미 관리자 최종 제출이 완료된 월입니다.')
+        return
+      }
+      if (!areAllDoctorMonthsFinalized(month)) {
+        alert('최종 확인이 완료되지 않아 관리자 최종 제출이 불가합니다.')
+        return
+      }
+      if (!confirm('관리자 최종 제출 후 인센티브 확인 메뉴에서 최종 표를 볼 수 있습니다. 제출할까요?')) return
+      state.adminFinalizedMonths.push(getAdminFinalizedKey(month))
+      saveState()
+      syncSilently()
+      renderAll()
     }
 
     function isMonthFinished(month) {
@@ -2193,9 +2229,14 @@
       const adminBulkActions = document.getElementById('adminBulkActions')
       adminSummaryPanel.classList.toggle('hidden', selectedDoctor !== 'all')
       adminRecordTableWrap.classList.toggle('admin-record-scroll', selectedDoctor === 'all')
-      adminBulkActions.innerHTML = state.adminBulkEdit
-        ? '<button class="btn primary" type="button" onclick="saveAdminBulkEdit()">전체 저장</button><button class="btn" type="button" onclick="cancelInlineEdit(\'admin\')">전체 취소</button>'
-        : '<button class="btn" type="button" onclick="toggleAdminBulkEdit()">전체 수정</button>'
+      if (state.adminBulkEdit) {
+        adminBulkActions.innerHTML = '<button class="btn primary" type="button" onclick="saveAdminBulkEdit()">전체 저장</button><button class="btn" type="button" onclick="cancelInlineEdit(\'admin\')">전체 취소</button>'
+      } else if (selectedDoctor === 'all') {
+        const adminFinalized = isAdminMonthFinalized(selectedMonth)
+        adminBulkActions.innerHTML = `<button class="btn" type="button" onclick="toggleAdminBulkEdit()">전체 수정</button><button class="btn primary" type="button" onclick="confirmAdminMonth()" ${adminFinalized ? 'disabled' : ''}>${adminFinalized ? '최종 제출 완료' : '관리자 최종 제출'}</button>`
+      } else {
+        adminBulkActions.innerHTML = '<button class="btn" type="button" onclick="toggleAdminBulkEdit()">전체 수정</button>'
+      }
       if (selectedDoctor === 'all') {
         renderSummaryTable(selectedMonth, 'adminSummaryHead', 'adminSummaryRows')
       }
@@ -2352,6 +2393,11 @@
     function renderSummary() {
       if (!state.auth.payroll) return
       const month = document.getElementById('summaryMonth').value || monthString()
+      if (!isAdminMonthFinalized(month)) {
+        document.getElementById('summaryHead').innerHTML = ''
+        document.getElementById('summaryRows').innerHTML = '<tr><td class="muted">최종 확인이 완료되지 않아 확인이 불가합니다.</td></tr>'
+        return
+      }
       renderSummaryTable(month, 'summaryHead', 'summaryRows')
     }
 
