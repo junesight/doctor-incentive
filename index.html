@@ -153,6 +153,7 @@
       flex-wrap: wrap;
       gap: 8px;
       justify-content: flex-end;
+      align-items: center;
     }
 
     .btn {
@@ -539,6 +540,14 @@
     .badge.yellow { color: var(--yellow); background: var(--yellow-soft); }
     .badge.red { color: var(--red); background: var(--red-soft); }
 
+    .sync-status-badge {
+      min-height: 42px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      justify-content: center;
+      text-align: center;
+    }
+
     .admin-final-status {
       min-height: 42px;
       padding: 10px 12px;
@@ -645,9 +654,7 @@
         <button id="navSummary" onclick="setView('summary')">인센티브 확인</button>
         <button id="navSettings" onclick="setView('settings')">관리자 설정</button>
       </div>
-      <div class="profile-panel">
-        <span id="syncStatus" class="badge yellow">로컬 모드</span>
-      </div>
+      <div class="profile-panel"></div>
     </aside>
 
     <main class="main">
@@ -656,7 +663,8 @@
           <h1>의료진 인센티브 관리</h1>
         </div>
         <div class="actions">
-          <button class="btn primary" onclick="syncNow()">Supabase 동기화</button>
+          <span id="syncStatus" class="badge yellow sync-status-badge">로컬 모드</span>
+          <button class="btn" onclick="syncNow()">Supabase 동기화</button>
         </div>
       </div>
 
