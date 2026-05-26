@@ -297,6 +297,11 @@
       align-items: end;
     }
 
+    .daily-entry-form {
+      width: min(480px, 100%);
+      grid-template-columns: 1fr;
+    }
+
     .form-actions {
       grid-column: 1 / -1;
     }
@@ -320,6 +325,49 @@
       padding-top: 12px;
       display: grid;
       gap: 12px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(15, 23, 42, 0.46);
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+
+    .modal {
+      width: min(420px, 100%);
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: white;
+      cursor: pointer;
+      font-weight: 900;
     }
 
     .split-entry {
@@ -364,33 +412,33 @@
 
     .monthly-table {
       table-layout: fixed;
-      min-width: 1060px;
+      min-width: 920px;
     }
 
     .monthly-table th,
     .monthly-table td {
-      padding: 3px 7px;
+      padding: 3px 5px;
       font-size: 13px;
     }
 
     .monthly-table th {
-      padding: 6px 7px;
+      padding: 5px 5px;
       font-size: 13px;
     }
 
     .monthly-table input {
       width: 100%;
       min-height: 26px;
-      padding: 2px 6px;
+      padding: 2px 4px;
       font-size: 13px;
       text-align: right;
     }
 
-    .col-date { width: 112px; }
-    .col-count { width: 118px; }
-    .col-money { width: 148px; }
-    .col-incentive { width: 148px; }
-    .col-actions { width: 128px; }
+    .col-date { width: 88px; }
+    .col-count { width: 92px; }
+    .col-money { width: 122px; }
+    .col-incentive { width: 122px; }
+    .col-actions { width: 110px; }
 
     .inline-actions {
       display: grid;
@@ -400,7 +448,7 @@
 
     .inline-actions .btn {
       min-height: 26px;
-      padding: 3px 7px;
+      padding: 3px 5px;
       font-size: 13px;
     }
 
@@ -416,17 +464,17 @@
 
     .summary-pivot {
       table-layout: fixed;
-      min-width: 980px;
+      min-width: 860px;
     }
 
     .summary-pivot th,
     .summary-pivot td {
-      padding: 9px 10px;
+      padding: 7px 7px;
       font-size: 13px;
     }
 
     .summary-pivot .metric-col {
-      width: 190px;
+      width: 150px;
       background: #f9fafb;
       font-weight: 900;
     }
@@ -573,7 +621,7 @@
         </div>
       </div>
       <div class="nav">
-        <button id="navInput" class="active" onclick="setView('input')">일일 약침 입력</button>
+        <button id="navInput" class="active" onclick="setView('input')">일일 약침 매출 입력</button>
         <button id="navLinda" onclick="setView('linda')">린다/수 매출 입력</button>
         <button id="navRecords" onclick="setView('records')">월별 내역 개인 확인</button>
         <button id="navAdminRecords" onclick="setView('adminRecords')">관리자 확인</button>
@@ -599,28 +647,32 @@
       <section id="viewInput" class="panel">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">약침 입력</h2>
+            <h2 class="panel-title">일일 약침 매출 입력</h2>
           </div>
         </div>
-        <form class="entry-form" onsubmit="saveEntry(event)">
+        <form class="entry-form daily-entry-form" onsubmit="saveEntry(event)">
+          <label>
+            날짜
+            <input id="entryDate" type="date" required />
+          </label>
           <label id="doctorField">
             원장님
             <select id="entryDoctor" required></select>
           </label>
           <label>
-            날짜
-            <input id="entryDate" type="date" required />
+            비밀번호
+            <input id="entryPassword" type="password" required />
           </label>
           <label>
-            대용량정밀약침 시술 건수
+            대용량정밀약침 시술 건수(명)
             <input id="entryCount" type="text" inputmode="numeric" pattern="[0-9]*" required placeholder="" />
           </label>
           <label>
-            대용량정밀약침 매출
+            대용량정밀약침 매출(원)
             <input id="entryRevenue" type="text" inputmode="numeric" pattern="[0-9]*" required placeholder="" />
           </label>
           <label>
-            자하거/디나 시술 건수
+            자하거/디나 시술 건수(명)
             <input id="entryPlacentaDinaCount" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="" />
           </label>
           <div class="form-actions">
@@ -837,6 +889,19 @@
               <tbody id="adminRecordRows"></tbody>
             </table>
           </div>
+          <div id="adminSummaryPanel" class="panel" style="margin-top:16px;">
+            <div class="panel-head">
+              <div>
+                <h3 class="panel-title">인센티브 확인</h3>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="summary-pivot">
+                <thead id="adminSummaryHead"></thead>
+                <tbody id="adminSummaryRows"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -989,6 +1054,45 @@
     </main>
   </section>
 
+  <div id="authModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+      <div class="modal-head">
+        <h2 id="authModalTitle" class="modal-title">비밀번호 확인</h2>
+        <button class="modal-close" type="button" onclick="closeAuthModal()">×</button>
+      </div>
+      <label id="authModalDoctorLabel" class="hidden">
+        원장님
+        <select id="authModalDoctor" onchange="updateAuthModalPasswordButton()"></select>
+      </label>
+      <label>
+        비밀번호
+        <input id="authModalPin" type="password" />
+      </label>
+      <div class="form-actions">
+        <button id="authModalSubmitButton" class="btn primary" type="button" onclick="submitAuthModal()">확인</button>
+        <button id="authModalPasswordButton" class="btn hidden" type="button" onclick="showAuthModalPasswordChange()">비번 변경</button>
+      </div>
+      <div id="authModalPasswordChangeForm" class="password-change-form hidden">
+        <label>
+          기존 비밀번호
+          <input id="authModalOldPassword" type="password" />
+        </label>
+        <label>
+          새 비밀번호
+          <input id="authModalNewPassword" type="password" />
+        </label>
+        <label>
+          새 비밀번호 확인
+          <input id="authModalNewPasswordConfirm" type="password" />
+        </label>
+        <div class="form-actions">
+          <button class="btn primary" type="button" onclick="changeAuthModalPassword()">저장</button>
+          <button class="btn" type="button" onclick="hideAuthModalPasswordChange()">취소</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const STORAGE_KEY = 'bubu_doctor_incentive_manager_v1'
     const CONFIG_KEY = 'bubu_precision_counter_config_v1'
@@ -1020,6 +1124,8 @@
     let doctors = loadDoctors()
     let procedureRates = loadProcedureRates()
     let passwordHashes = loadPasswordHashes()
+    let pendingAuthView = null
+    let currentAuthType = null
 
     function getUsers() {
       return [
@@ -1423,6 +1529,11 @@
         ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
       ].join('')
 
+      document.getElementById('authModalDoctor').innerHTML = [
+        '<option value="" selected disabled></option>',
+        ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
+      ].join('')
+
       document.getElementById('adminDoctorFilter').innerHTML = [
         '<option value="all">전체</option>',
         ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
@@ -1472,6 +1583,79 @@
       document.getElementById('loginPin').value = ''
     }
 
+    function getAuthTypeForView(view) {
+      return {
+        linda: 'linda',
+        records: 'personal',
+        adminRecords: 'admin',
+        summary: 'payroll',
+        settings: 'settings',
+      }[view]
+    }
+
+    function hasAuthForView(view) {
+      const type = getAuthTypeForView(view)
+      if (!type) return true
+      if (type === 'personal') return Boolean(state.auth.personalDoctorId)
+      return Boolean(state.auth[type])
+    }
+
+    function getAuthTitle(type) {
+      return {
+        personal: '월별 내역 개인 확인',
+        linda: '린다/수 매출 입력',
+        admin: '관리자 확인',
+        payroll: '인센티브 확인',
+        settings: '관리자 설정',
+      }[type] || '비밀번호 확인'
+    }
+
+    function openAuthModal(view) {
+      pendingAuthView = view
+      currentAuthType = getAuthTypeForView(view)
+      document.getElementById('authModalTitle').textContent = getAuthTitle(currentAuthType)
+      document.getElementById('authModalPin').value = ''
+      document.getElementById('authModalDoctor').value = ''
+      document.getElementById('authModalDoctorLabel').classList.toggle('hidden', currentAuthType !== 'personal')
+      hideAuthModalPasswordChange()
+      updateAuthModalPasswordButton()
+      document.getElementById('authModalBackdrop').classList.remove('hidden')
+      setTimeout(() => {
+        const target = currentAuthType === 'personal' ? document.getElementById('authModalDoctor') : document.getElementById('authModalPin')
+        target?.focus()
+      }, 0)
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModalBackdrop').classList.add('hidden')
+      document.getElementById('authModalPin').value = ''
+      hideAuthModalPasswordChange()
+      pendingAuthView = null
+      currentAuthType = null
+    }
+
+    function getAuthPin(type) {
+      if (currentAuthType === type) return document.getElementById('authModalPin').value
+      const config = {
+        personal: 'personalLoginPin',
+        linda: 'lindaLoginPin',
+        admin: 'adminLoginPin',
+        payroll: 'payrollLoginPin',
+        settings: 'settingsLoginPin',
+      }[type]
+      return config ? document.getElementById(config).value : ''
+    }
+
+    function getAuthDoctorId() {
+      if (currentAuthType === 'personal') return document.getElementById('authModalDoctor').value
+      return document.getElementById('personalLoginDoctor').value
+    }
+
+    function submitAuthModal() {
+      if (!currentAuthType) return
+      loginProtectedArea(currentAuthType)
+    }
+
     async function loginProtectedArea(type) {
       const config = {
         personal: { pinId: 'personalLoginPin', boxId: 'personalLoginBox', contentId: 'personalRecordsContent' },
@@ -1483,11 +1667,11 @@
 
       if (!config) return
 
-      const pin = document.getElementById(config.pinId).value
+      const pin = getAuthPin(type)
       const adminTypes = ['admin', 'settings', 'linda']
 
       if (type === 'personal') {
-        const doctorId = document.getElementById('personalLoginDoctor').value
+        const doctorId = getAuthDoctorId()
         if (!doctorId) {
           alert('원장님을 선택해주세요.')
           return
@@ -1512,6 +1696,14 @@
 
       document.getElementById(config.boxId).classList.add('hidden')
       document.getElementById(config.contentId).classList.remove('hidden')
+      const nextView = pendingAuthView
+      document.getElementById('authModalBackdrop').classList.add('hidden')
+      pendingAuthView = null
+      currentAuthType = null
+      if (nextView) {
+        setView(nextView)
+        return
+      }
       renderAll()
     }
 
@@ -1519,6 +1711,73 @@
       const button = document.getElementById('personalPasswordChangeButton')
       if (!button) return
       button.classList.toggle('hidden', !document.getElementById('personalLoginDoctor').value)
+    }
+
+    function updateAuthModalPasswordButton() {
+      const button = document.getElementById('authModalPasswordButton')
+      if (!button) return
+      const canChange = currentAuthType === 'payroll' || (currentAuthType === 'personal' && document.getElementById('authModalDoctor').value)
+      button.classList.toggle('hidden', !canChange)
+    }
+
+    function showAuthModalPasswordChange() {
+      if (currentAuthType === 'personal' && !document.getElementById('authModalDoctor').value) {
+        alert('원장님을 먼저 선택해주세요.')
+        return
+      }
+      document.getElementById('authModalPasswordChangeForm').classList.remove('hidden')
+      document.getElementById('authModalOldPassword').focus()
+    }
+
+    function hideAuthModalPasswordChange() {
+      const form = document.getElementById('authModalPasswordChangeForm')
+      if (!form) return
+      form.classList.add('hidden')
+      for (const id of ['authModalOldPassword', 'authModalNewPassword', 'authModalNewPasswordConfirm']) {
+        const input = document.getElementById(id)
+        if (input) input.value = ''
+      }
+    }
+
+    async function changeAuthModalPassword() {
+      if (!currentAuthType) return
+      const type = currentAuthType
+      if (type !== 'personal' && type !== 'payroll') return
+
+      const oldPassword = document.getElementById('authModalOldPassword').value
+      const newPassword = document.getElementById('authModalNewPassword').value
+      const confirmPassword = document.getElementById('authModalNewPasswordConfirm').value
+      const doctorId = type === 'personal' ? document.getElementById('authModalDoctor').value : null
+      const oldPasswordOk = type === 'personal'
+        ? await checkDoctorPassword(doctorId, oldPassword)
+        : await checkRolePassword('payroll', oldPassword)
+
+      if (type === 'personal' && !doctorId) {
+        alert('원장님을 먼저 선택해주세요.')
+        return
+      }
+      if (!oldPasswordOk) {
+        alert('기존 비밀번호를 확인해주세요.')
+        return
+      }
+      if (!isValidNewPassword(newPassword)) {
+        alert('새 비밀번호는 6자리 이상 영문 또는 숫자로 입력해주세요.')
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        alert('새 비밀번호 확인이 일치하지 않습니다.')
+        return
+      }
+
+      if (type === 'personal') {
+        passwordHashes.doctors[doctorId] = await hashPassword(newPassword)
+      } else {
+        passwordHashes.roles.payroll = await hashPassword(newPassword)
+      }
+      savePasswordHashesToStorage()
+      syncSilently()
+      hideAuthModalPasswordChange()
+      alert('비밀번호가 변경되었습니다.')
     }
 
     function showPasswordChangeForm(type) {
@@ -1576,6 +1835,10 @@
     }
 
     function setView(view) {
+      if (!hasAuthForView(view)) {
+        openAuthModal(view)
+        return
+      }
       state.view = view
       for (const name of ['input', 'linda', 'records', 'adminRecords', 'summary', 'settings']) {
         document.getElementById(`view${name[0].toUpperCase() + name.slice(1)}`).classList.toggle('hidden', name !== view)
@@ -1588,6 +1851,7 @@
       state.editingId = null
       document.getElementById('entryDoctor').value = ''
       document.getElementById('entryDate').value = todayString()
+      document.getElementById('entryPassword').value = ''
       document.getElementById('entryCount').value = ''
       document.getElementById('entryRevenue').value = ''
       document.getElementById('entryPlacentaDinaCount').value = ''
@@ -1598,15 +1862,21 @@
       return String(value || '').replace(/\D/g, '')
     }
 
-    function saveEntry(event) {
+    async function saveEntry(event) {
       event.preventDefault()
       const doctorId = document.getElementById('entryDoctor').value
+      const password = document.getElementById('entryPassword').value
       const count = toDigits(document.getElementById('entryCount').value)
       const revenue = toDigits(document.getElementById('entryRevenue').value)
       const placentaDinaCount = toDigits(document.getElementById('entryPlacentaDinaCount').value)
 
       if (!doctorId) {
         alert('원장님을 선택해주세요.')
+        return
+      }
+
+      if (!await checkDoctorPassword(doctorId, password)) {
+        alert('비밀번호를 확인해주세요.')
         return
       }
 
@@ -1757,7 +2027,7 @@
       return `
         <tr class="monthly-total-row">
           <td>월 합계</td>
-          <td class="right">${totals.count.toLocaleString('ko-KR')}건</td>
+          <td class="right">${totals.count.toLocaleString('ko-KR')}명</td>
           <td class="right">${formatWon(totals.revenue)}</td>
           <td class="right">${totals.placentaDinaCount.toLocaleString('ko-KR')}건</td>
           <td class="right">${formatWon(totals.lindaRevenue)}</td>
@@ -1774,6 +2044,20 @@
 
     function isPersonalMonthFinalized(month = document.getElementById('recordMonth').value || monthString()) {
       return state.finalizedMonths.includes(getFinalizedKey(state.auth.personalDoctorId, month))
+    }
+
+    function isDoctorMonthFinalized(doctorId, month) {
+      return state.finalizedMonths.includes(getFinalizedKey(doctorId, month))
+    }
+
+    function getFinalizationTargetDoctors() {
+      return doctors.filter((doctor) => doctor.id !== 'doctor-01')
+    }
+
+    function getAllFinalizedStatusLabel(month) {
+      const targets = getFinalizationTargetDoctors()
+      const allDone = targets.length > 0 && targets.every((doctor) => isDoctorMonthFinalized(doctor.id, month))
+      return allDone ? '전원 최종 제출이 완료되었습니다.' : '최종 제출이 완료되지 않았습니다.'
     }
 
     function isMonthFinished(month) {
@@ -1843,7 +2127,7 @@
         return `
           <tr>
             <td>${date}</td>
-            <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '건' : ''}</td>
+            <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
             <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
             <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '건' : ''}</td>
             <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
@@ -1862,6 +2146,11 @@
       const selectedMonth = document.getElementById('adminRecordMonth').value || monthString()
       const selectedDoctor = document.getElementById('adminDoctorFilter').value || 'all'
       const entries = getAdminEntries()
+      const adminSummaryPanel = document.getElementById('adminSummaryPanel')
+      adminSummaryPanel.classList.toggle('hidden', selectedDoctor !== 'all')
+      if (selectedDoctor === 'all') {
+        renderSummaryTable(selectedMonth, 'adminSummaryHead', 'adminSummaryRows')
+      }
 
       if (selectedDoctor !== 'all') {
         document.getElementById('adminRecordTable').classList.add('monthly-table')
@@ -1890,7 +2179,8 @@
         const entriesByDate = new Map(entries.map((entry) => [entry.date, entry]))
         const dates = getDatesInMonth(selectedMonth)
         const doctor = getDoctor(selectedDoctor)
-        document.getElementById('adminRecordCountLabel').textContent = `${doctor.name} · ${selectedMonth} · ${entries.length.toLocaleString('ko-KR')}일 입력`
+        const finalStatus = isDoctorMonthFinalized(selectedDoctor, selectedMonth) ? '최종 제출 완료' : '최종 제출 미완료'
+        document.getElementById('adminRecordCountLabel').textContent = `${doctor.name} · ${finalStatus} · ${selectedMonth} · ${entries.length.toLocaleString('ko-KR')}일 입력`
         document.getElementById('adminRecordRows').innerHTML = renderMonthlyTotalRow(entries) + dates.map((date) => {
           const entry = entriesByDate.get(date)
           const isEditing = state.inlineEditDate === `admin:${selectedDoctor}:${date}`
@@ -1918,7 +2208,7 @@
           return `
             <tr>
               <td>${date}</td>
-              <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '건' : ''}</td>
+              <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
               <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
               <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '건' : ''}</td>
               <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
@@ -1933,8 +2223,19 @@
         return
       }
 
-      document.getElementById('adminRecordTable').classList.remove('monthly-table')
-      document.getElementById('adminRecordCols').innerHTML = ''
+      document.getElementById('adminRecordTable').classList.add('monthly-table')
+      document.getElementById('adminRecordCols').innerHTML = `
+        <col class="col-date" />
+        <col class="col-count" />
+        <col class="col-count" />
+        <col class="col-money" />
+        <col class="col-count" />
+        <col class="col-money" />
+        <col class="col-money" />
+        <col class="col-incentive" />
+        <col class="col-date" />
+        <col class="col-actions" />
+      `
       document.getElementById('adminRecordHead').innerHTML = `
         <tr>
           <th>날짜</th>
@@ -1949,7 +2250,7 @@
           <th>관리</th>
         </tr>
       `
-      document.getElementById('adminRecordCountLabel').textContent = `${entries.length.toLocaleString('ko-KR')}개 내역`
+      document.getElementById('adminRecordCountLabel').textContent = getAllFinalizedStatusLabel(selectedMonth)
       document.getElementById('adminRecordRows').innerHTML = entries.length ? entries.map((entry) => {
         const doctor = getDoctor(entry.doctorId)
         const isEditing = state.inlineEditDate === `adminEntry:${entry.id}`
@@ -1980,7 +2281,7 @@
           <tr>
             <td>${entry.date}</td>
             <td><span class="badge doctor-badge ${getDoctorColorClass(entry.doctorId)}">${doctor.name}</span></td>
-            <td class="right">${Number(entry.count || 0).toLocaleString('ko-KR')}건</td>
+            <td class="right">${Number(entry.count || 0).toLocaleString('ko-KR')}명</td>
             <td class="right">${formatWon(entry.revenue)}</td>
             <td class="right">${Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR')}건</td>
             <td class="right">${formatWon(entry.lindaRevenue)}</td>
@@ -1999,7 +2300,10 @@
     function renderSummary() {
       if (!state.auth.payroll) return
       const month = document.getElementById('summaryMonth').value || monthString()
+      renderSummaryTable(month, 'summaryHead', 'summaryRows')
+    }
 
+    function renderSummaryTable(month, headId, rowsId) {
       let totals = { count: 0, revenue: 0, placentaDinaCount: 0, lindaRevenue: 0, suRevenue: 0, precision: 0, linda: 0, su: 0, placenta: 0, total: 0 }
 
       const doctorSummaries = doctors.map((doctor) => {
@@ -2046,7 +2350,7 @@
       })
 
       const metrics = [
-        { label: '대용량정밀약침 건수', value: (item) => `${item.count.toLocaleString('ko-KR')}건`, total: `${totals.count.toLocaleString('ko-KR')}건` },
+        { label: '대용량정밀약침 건수', value: (item) => `${item.count.toLocaleString('ko-KR')}명`, total: `${totals.count.toLocaleString('ko-KR')}명` },
         { label: '대용량정밀약침 매출', value: (item) => formatWon(item.revenue), total: formatWon(totals.revenue) },
         { label: '자하거/디나 건수', value: (item) => `${item.placentaDinaCount.toLocaleString('ko-KR')}건`, total: `${totals.placentaDinaCount.toLocaleString('ko-KR')}건` },
         { label: '린다이어트 매출', value: (item) => formatWon(item.lindaRevenue), total: formatWon(totals.lindaRevenue) },
@@ -2058,7 +2362,7 @@
         { label: '총 인센티브', value: (item) => formatWon(item.totalIncentive), total: formatWon(totals.total), totalRow: true },
       ]
 
-      document.getElementById('summaryHead').innerHTML = `
+      document.getElementById(headId).innerHTML = `
         <tr>
           <th class="metric-col">항목</th>
           ${doctorSummaries.map((item) => `<th class="right">${item.doctor.name}</th>`).join('')}
@@ -2066,7 +2370,7 @@
         </tr>
       `
 
-      document.getElementById('summaryRows').innerHTML = metrics.map((metric) => `
+      document.getElementById(rowsId).innerHTML = metrics.map((metric) => `
         <tr class="${metric.totalRow ? 'total-row' : ''} ${metric.divider ? 'section-divider' : ''} ${metric.revenueTotal ? 'revenue-total-row' : ''}">
           <td class="metric-col">${metric.label}</td>
           ${doctorSummaries.map((item) => `<td class="right">${metric.value(item)}</td>`).join('')}
@@ -2388,6 +2692,39 @@
       })
     }
 
+    function bindEnterPasswordChange(type) {
+      for (const suffix of ['OldPassword', 'NewPassword', 'NewPasswordConfirm']) {
+        const input = document.getElementById(`${type}${suffix}`)
+        if (!input) continue
+        input.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter') return
+          event.preventDefault()
+          changePassword(type)
+        })
+      }
+    }
+
+    function bindAuthModalEnter() {
+      document.getElementById('authModalPin').addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return
+        event.preventDefault()
+        submitAuthModal()
+      })
+      for (const id of ['authModalOldPassword', 'authModalNewPassword', 'authModalNewPasswordConfirm']) {
+        document.getElementById(id).addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter') return
+          event.preventDefault()
+          changeAuthModalPassword()
+        })
+      }
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return
+        if (document.getElementById('authModalBackdrop').classList.contains('hidden')) return
+        event.preventDefault()
+        closeAuthModal()
+      })
+    }
+
     function initialize() {
       loadState()
       populateLogin()
@@ -2411,6 +2748,10 @@
       bindEnterLogin('adminLoginPin', 'admin')
       bindEnterLogin('payrollLoginPin', 'payroll')
       bindEnterLogin('settingsLoginPin', 'settings')
+      for (const type of ['personal', 'payroll', 'admin', 'master']) {
+        bindEnterPasswordChange(type)
+      }
+      bindAuthModalEnter()
       updatePersonalPasswordButton()
       loadConfig()
       renderAll()
