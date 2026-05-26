@@ -1167,6 +1167,20 @@
     const SETTINGS_TABLE = 'app_settings'
     const ADMIN_ID = 'admin'
     const DEFAULT_PIN = '0000'
+    const DEFAULT_PASSWORD_HASHES = {
+      roles: {
+        admin: null,
+        master: null,
+        payroll: '04aa524f2afdd9d637bfc42d3162ff9d23767b4c68aa7d29b392a27b37ceee3f',
+      },
+      doctors: {
+        'doctor-01': 'c93940331979eb8f1b696b883b77bc4f375d0e31faf650c3981245a35d962e33',
+        'doctor-03': '3d25f1c5c13d7f07143027029c9385efefa060ee8211a551300b09a5ae001c65',
+        'doctor-04': '177570b7be9a934c16aee7de5cde4f8edc71de09b556b5c5db097dafa018182a',
+        'doctor-05': '11d022ce8980cc5cda42716db2c485440b33a89c4b228801a6bd9e2ae74f8d2f',
+        'doctor-06': '06296732fda45a744cc0da581287e366a5de5191b0165b0a7ad20b00ed0b5288',
+      },
+    }
     const DEFAULT_SUPABASE_URL = 'https://tesyabznqpqekbosvidf.supabase.co'
     const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3lhYnpucXBxZWtib3N2aWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MDI0OTYsImV4cCI6MjA5NTI3ODQ5Nn0.9md-SvBOcR6xbs2KRbBEcIrFHOYWwDpov_yRCe1tm7E'
 
@@ -1300,16 +1314,26 @@
 
     function getDefaultPasswordHashes() {
       return {
-        roles: { admin: null, master: null, payroll: null },
-        doctors: Object.fromEntries(doctors.map((doctor) => [doctor.id, null])),
+        roles: { ...DEFAULT_PASSWORD_HASHES.roles },
+        doctors: {
+          ...Object.fromEntries(doctors.map((doctor) => [doctor.id, null])),
+          ...DEFAULT_PASSWORD_HASHES.doctors,
+        },
       }
+    }
+
+    function mergePasswordHashGroup(defaults, saved = {}) {
+      return Object.fromEntries(Object.entries(defaults).map(([key, defaultValue]) => [
+        key,
+        saved[key] || defaultValue,
+      ]))
     }
 
     function normalizePasswordHashes(value = {}) {
       const defaults = getDefaultPasswordHashes()
       return {
-        roles: { ...defaults.roles, ...(value.roles || {}) },
-        doctors: { ...defaults.doctors, ...(value.doctors || {}) },
+        roles: mergePasswordHashGroup(defaults.roles, value.roles || {}),
+        doctors: mergePasswordHashGroup(defaults.doctors, value.doctors || {}),
       }
     }
 
