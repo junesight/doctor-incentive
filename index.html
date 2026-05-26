@@ -776,7 +776,7 @@
       <section id="viewRecords" class="panel hidden">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">월별 내역 개인 확인</h2>
+            <h2 id="personalRecordsTitle" class="panel-title">월별 내역 개인 확인</h2>
           </div>
         </div>
         <div id="personalLoginBox" class="auth-form">
@@ -1579,7 +1579,7 @@
       const selectedSummaryDetailDoctor = summaryDetailDoctor?.value || ''
       const entryDoctor = document.getElementById('entryDoctor')
       entryDoctor.innerHTML = [
-        '<option value="" selected disabled></option>',
+        '<option value="" selected disabled>선택해주세요</option>',
         ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
       ].join('')
 
@@ -1611,10 +1611,10 @@
 
       if (summaryDetailDoctor) {
         summaryDetailDoctor.innerHTML = [
-          '<option value="" selected>원장님을 선택해주세요.</option>',
-          ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
+          '<option value="" selected>선택해주세요</option>',
+          ...doctors.filter((doctor) => doctor.id !== 'doctor-01').map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
         ].join('')
-        summaryDetailDoctor.value = doctors.some((doctor) => doctor.id === selectedSummaryDetailDoctor) ? selectedSummaryDetailDoctor : ''
+        summaryDetailDoctor.value = doctors.some((doctor) => doctor.id === selectedSummaryDetailDoctor && doctor.id !== 'doctor-01') ? selectedSummaryDetailDoctor : ''
       }
     }
 
@@ -1760,6 +1760,7 @@
         }
         state.auth.personalDoctorId = doctorId
         state.currentUser = getDoctor(doctorId)
+        document.getElementById('personalRecordsTitle').textContent = `월별 내역 개인 확인 (${state.currentUser.name} 원장님)`
       } else {
         const allowed = adminTypes.includes(type)
           ? await checkRolePassword('admin', pin) || await checkRolePassword('master', pin)
@@ -2517,7 +2518,10 @@
     function renderSummaryTable(month, headId, rowsId) {
       let totals = { count: 0, revenue: 0, placentaDinaCount: 0, lindaRevenue: 0, suRevenue: 0, precision: 0, linda: 0, su: 0, placenta: 0, total: 0 }
 
-      const doctorSummaries = doctors.map((doctor) => {
+      const isPayrollSummary = headId === 'summaryHead'
+      const displayDoctors = isPayrollSummary ? doctors.filter((doctor) => doctor.id !== 'doctor-01') : doctors
+
+      const doctorSummaries = displayDoctors.map((doctor) => {
         const entries = state.entries
           .filter((entry) => entry.date.startsWith(month))
           .filter((entry) => entry.doctorId === doctor.id)
@@ -2532,17 +2536,20 @@
         const suIncentive = Math.round(suRevenue * (Number(procedureRates.su || 0) / 100))
         const placentaIncentive = 0
         const totalIncentive = precisionIncentive + placentaIncentive + lindaIncentive + suIncentive
+        const includeIncentive = doctor.id !== 'doctor-01'
 
         totals.count += count
         totals.revenue += revenue
         totals.placentaDinaCount += placentaDinaCount
         totals.lindaRevenue += lindaRevenue
         totals.suRevenue += suRevenue
-        totals.precision += precisionIncentive
-        totals.linda += lindaIncentive
-        totals.su += suIncentive
-        totals.placenta += placentaIncentive
-        totals.total += totalIncentive
+        if (includeIncentive) {
+          totals.precision += precisionIncentive
+          totals.linda += lindaIncentive
+          totals.su += suIncentive
+          totals.placenta += placentaIncentive
+          totals.total += totalIncentive
+        }
 
         return {
           doctor,
@@ -2557,6 +2564,7 @@
           suIncentive,
           placentaIncentive,
           totalIncentive,
+          includeIncentive,
         }
       })
 
@@ -2566,11 +2574,11 @@
         { label: '자하거/디나 건수', value: (item) => `${item.placentaDinaCount.toLocaleString('ko-KR')}명`, total: `${totals.placentaDinaCount.toLocaleString('ko-KR')}명` },
         { label: '린다이어트 매출', value: (item) => formatWon(item.lindaRevenue), total: formatWon(totals.lindaRevenue) },
         { label: '수 한약 매출', value: (item) => formatWon(item.suRevenue), total: formatWon(totals.suRevenue), divider: true },
-        { label: '대용량정밀약침 인센티브', value: (item) => formatWon(item.precisionIncentive), total: formatWon(totals.precision) },
-        { label: '린다이어트 인센티브', value: (item) => formatWon(item.lindaIncentive), total: formatWon(totals.linda) },
-        { label: '수 한약 인센티브', value: (item) => formatWon(item.suIncentive), total: formatWon(totals.su) },
+        { label: '대용량정밀약침 인센티브', value: (item) => item.includeIncentive ? formatWon(item.precisionIncentive) : '', total: formatWon(totals.precision) },
+        { label: '린다이어트 인센티브', value: (item) => item.includeIncentive ? formatWon(item.lindaIncentive) : '', total: formatWon(totals.linda) },
+        { label: '수 한약 인센티브', value: (item) => item.includeIncentive ? formatWon(item.suIncentive) : '', total: formatWon(totals.su) },
         { label: '총 매출', value: (item) => formatWon(item.totalRevenue), total: formatWon(totals.revenue + totals.lindaRevenue + totals.suRevenue), revenueTotal: true },
-        { label: '총 인센티브', value: (item) => formatWon(item.totalIncentive), total: formatWon(totals.total), totalRow: true },
+        { label: '총 인센티브', value: (item) => item.includeIncentive ? formatWon(item.totalIncentive) : '', total: formatWon(totals.total), totalRow: true },
       ]
 
       document.getElementById(headId).innerHTML = `
