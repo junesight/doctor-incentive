@@ -818,7 +818,7 @@
               월
               <input id="recordMonth" type="month" onchange="renderAll()" />
             </label>
-            <button class="btn primary toolbar-action" onclick="confirmPersonalMonth()">월 최종 내역 확인 완료</button>
+            <button id="personalFinalizeButton" class="btn toolbar-action" onclick="confirmPersonalMonth()">월 최종 내역 확인 완료</button>
           </div>
           <div class="toolbar-right">
             <span id="recordCountLabel" class="badge blue">0개 내역</span>
@@ -970,6 +970,46 @@
             <thead id="summaryHead"></thead>
             <tbody id="summaryRows"></tbody>
           </table>
+        </div>
+        <div id="summaryDetailPanel" class="panel hidden" style="margin-top:16px;">
+          <div class="panel-head">
+            <div>
+              <h3 class="panel-title">개별 상세 내역</h3>
+            </div>
+          </div>
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <label>
+                원장님
+                <select id="summaryDetailDoctor" onchange="renderSummaryDetail()"></select>
+              </label>
+            </div>
+          </div>
+          <div id="summaryDetailTableWrap" class="table-wrap hidden">
+            <table class="monthly-table">
+              <colgroup>
+                <col class="col-date" />
+                <col class="col-count" />
+                <col class="col-money" />
+                <col class="col-count" />
+                <col class="col-money" />
+                <col class="col-money" />
+                <col class="col-incentive" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th class="right">대용량정밀약침 건수</th>
+                  <th class="right">대용량정밀약침 매출</th>
+                  <th class="right">자하거/디나 건수</th>
+                  <th class="right">린다이어트 매출</th>
+                  <th class="right">수 한약 매출</th>
+                  <th class="right">예상 인센티브</th>
+                </tr>
+              </thead>
+              <tbody id="summaryDetailRows"></tbody>
+            </table>
+          </div>
         </div>
         </div>
       </section>
@@ -1534,7 +1574,9 @@
 
     function populateDoctorOptions() {
       const adminDoctorFilter = document.getElementById('adminDoctorFilter')
+      const summaryDetailDoctor = document.getElementById('summaryDetailDoctor')
       const selectedAdminDoctor = adminDoctorFilter?.value || 'all'
+      const selectedSummaryDetailDoctor = summaryDetailDoctor?.value || ''
       const entryDoctor = document.getElementById('entryDoctor')
       entryDoctor.innerHTML = [
         '<option value="" selected disabled></option>',
@@ -1566,6 +1608,14 @@
         ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
       ].join('')
       adminDoctorFilter.value = doctors.some((doctor) => doctor.id === selectedAdminDoctor) ? selectedAdminDoctor : 'all'
+
+      if (summaryDetailDoctor) {
+        summaryDetailDoctor.innerHTML = [
+          '<option value="" selected>원장님을 선택해주세요.</option>',
+          ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
+        ].join('')
+        summaryDetailDoctor.value = doctors.some((doctor) => doctor.id === selectedSummaryDetailDoctor) ? selectedSummaryDetailDoctor : ''
+      }
     }
 
     async function login() {
@@ -2175,6 +2225,8 @@
       const entriesByDate = new Map(entries.map((entry) => [entry.date, entry]))
       const dates = getDatesInMonth(selectedMonth)
       const finalized = isPersonalMonthFinalized(selectedMonth)
+      const personalFinalizeButton = document.getElementById('personalFinalizeButton')
+      personalFinalizeButton.className = finalized ? 'btn primary toolbar-action' : 'btn toolbar-action'
       document.getElementById('recordCountLabel').textContent = finalized
         ? `${selectedMonth} · 최종 확정 완료`
         : `${selectedMonth} · ${entries.length.toLocaleString('ko-KR')}일 입력`
@@ -2268,8 +2320,11 @@
         const entriesByDate = new Map(entries.map((entry) => [entry.date, entry]))
         const dates = getDatesInMonth(selectedMonth)
         const doctor = getDoctor(selectedDoctor)
-        const finalStatus = isDoctorMonthFinalized(selectedDoctor, selectedMonth) ? '최종 제출 완료' : '최종 제출 미완료'
-        document.getElementById('adminRecordCountLabel').textContent = `${finalStatus} · ${selectedMonth} · ${entries.length.toLocaleString('ko-KR')}일 입력`
+        const finalStatusDone = isDoctorMonthFinalized(selectedDoctor, selectedMonth)
+        const finalStatus = finalStatusDone ? '최종 제출 완료' : '최종 제출 미완료'
+        const adminRecordCountLabel = document.getElementById('adminRecordCountLabel')
+        adminRecordCountLabel.textContent = `${finalStatus} · ${selectedMonth} · ${entries.length.toLocaleString('ko-KR')}일 입력`
+        adminRecordCountLabel.className = `badge admin-final-status ${finalStatusDone ? 'blue' : 'yellow'}`
         document.getElementById('adminRecordRows').innerHTML = renderMonthlyTotalRow(entries) + dates.map((date) => {
           const entry = entriesByDate.get(date)
           const isEditing = state.adminBulkEdit || state.inlineEditDate === `admin:${selectedDoctor}:${date}`
@@ -2341,7 +2396,10 @@
           <th>관리</th>
         </tr>
       `
-      document.getElementById('adminRecordCountLabel').textContent = getAllFinalizedStatusLabel(selectedMonth)
+      const allFinalizedDone = areAllDoctorMonthsFinalized(selectedMonth)
+      const adminRecordCountLabel = document.getElementById('adminRecordCountLabel')
+      adminRecordCountLabel.textContent = getAllFinalizedStatusLabel(selectedMonth)
+      adminRecordCountLabel.className = `badge admin-final-status ${allFinalizedDone ? 'blue' : 'yellow'}`
       document.getElementById('adminRecordRows').innerHTML = entries.length ? entries.map((entry) => {
         const doctor = getDoctor(entry.doctorId)
         const isEditing = state.adminBulkEdit || state.inlineEditDate === `adminEntry:${entry.id}`
@@ -2393,12 +2451,67 @@
     function renderSummary() {
       if (!state.auth.payroll) return
       const month = document.getElementById('summaryMonth').value || monthString()
+      const summaryDetailPanel = document.getElementById('summaryDetailPanel')
+      const summaryDetailTableWrap = document.getElementById('summaryDetailTableWrap')
       if (!isAdminMonthFinalized(month)) {
         document.getElementById('summaryHead').innerHTML = ''
         document.getElementById('summaryRows').innerHTML = '<tr><td class="muted">최종 확인이 완료되지 않아 확인이 불가합니다.</td></tr>'
+        summaryDetailPanel.classList.add('hidden')
+        summaryDetailTableWrap.classList.add('hidden')
+        document.getElementById('summaryDetailRows').innerHTML = ''
         return
       }
       renderSummaryTable(month, 'summaryHead', 'summaryRows')
+      summaryDetailPanel.classList.remove('hidden')
+      renderSummaryDetail()
+    }
+
+    function renderSummaryDetail() {
+      if (!state.auth.payroll) return
+      const month = document.getElementById('summaryMonth').value || monthString()
+      const doctorId = document.getElementById('summaryDetailDoctor').value
+      const tableWrap = document.getElementById('summaryDetailTableWrap')
+      const rowsTarget = document.getElementById('summaryDetailRows')
+
+      if (!isAdminMonthFinalized(month) || !doctorId) {
+        tableWrap.classList.add('hidden')
+        rowsTarget.innerHTML = ''
+        return
+      }
+
+      const entriesByDate = new Map(state.entries
+        .filter((entry) => entry.date.startsWith(month))
+        .filter((entry) => entry.doctorId === doctorId)
+        .map((entry) => [entry.date, entry]))
+      const dates = getDatesInMonth(month)
+      const entries = Array.from(entriesByDate.values())
+      const totals = getMonthlyTotals(entries)
+
+      rowsTarget.innerHTML = `
+        <tr class="monthly-total-row">
+          <td>월 합계</td>
+          <td class="right">${totals.count.toLocaleString('ko-KR')}명</td>
+          <td class="right">${formatWon(totals.revenue)}</td>
+          <td class="right">${totals.placentaDinaCount.toLocaleString('ko-KR')}명</td>
+          <td class="right">${formatWon(totals.lindaRevenue)}</td>
+          <td class="right">${formatWon(totals.suRevenue)}</td>
+          <td class="right">${formatWon(totals.incentive)}</td>
+        </tr>
+      ` + dates.map((date) => {
+        const entry = entriesByDate.get(date)
+        return `
+          <tr>
+            <td>${date}</td>
+            <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
+            <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
+            <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '명' : ''}</td>
+            <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
+            <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+            <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
+          </tr>
+        `
+      }).join('')
+      tableWrap.classList.remove('hidden')
     }
 
     function renderSummaryTable(month, headId, rowsId) {
