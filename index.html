@@ -1526,6 +1526,8 @@
     }
 
     function populateDoctorOptions() {
+      const adminDoctorFilter = document.getElementById('adminDoctorFilter')
+      const selectedAdminDoctor = adminDoctorFilter?.value || 'all'
       const entryDoctor = document.getElementById('entryDoctor')
       entryDoctor.innerHTML = [
         '<option value="" selected disabled></option>',
@@ -1552,10 +1554,11 @@
         ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
       ].join('')
 
-      document.getElementById('adminDoctorFilter').innerHTML = [
+      adminDoctorFilter.innerHTML = [
         '<option value="all">전체</option>',
         ...doctors.map((doctor) => `<option value="${doctor.id}">${doctor.name}</option>`),
       ].join('')
+      adminDoctorFilter.value = doctors.some((doctor) => doctor.id === selectedAdminDoctor) ? selectedAdminDoctor : 'all'
     }
 
     async function login() {
@@ -2453,6 +2456,11 @@
       renderAdminRecords()
     }
 
+    function restoreAdminFilters(month, doctorId) {
+      document.getElementById('adminRecordMonth').value = month || monthString()
+      document.getElementById('adminDoctorFilter').value = doctorId || 'all'
+    }
+
     function saveAdminBulkEdit() {
       if (!state.auth.admin || !state.adminBulkEdit) return
       const selectedMonth = document.getElementById('adminRecordMonth').value || monthString()
@@ -2509,7 +2517,10 @@
       state.inlineEditDate = null
       state.adminBulkEdit = false
       saveState()
+      restoreAdminFilters(selectedMonth, selectedDoctor)
       renderAll()
+      restoreAdminFilters(selectedMonth, selectedDoctor)
+      renderAdminRecords()
       syncSilently()
     }
 
@@ -2656,9 +2667,14 @@
         state.entries.push(nextEntry)
       }
 
+      const selectedMonth = document.getElementById('adminRecordMonth').value || monthString()
+      const selectedDoctor = document.getElementById('adminDoctorFilter').value || 'all'
       state.inlineEditDate = null
       saveState()
+      restoreAdminFilters(selectedMonth, selectedDoctor)
       renderAll()
+      restoreAdminFilters(selectedMonth, selectedDoctor)
+      renderAdminRecords()
       syncSilently()
     }
 
@@ -2683,10 +2699,15 @@
         updatedAt: new Date().toISOString(),
       }
 
+      const selectedMonth = document.getElementById('adminRecordMonth').value || monthString()
+      const selectedDoctor = document.getElementById('adminDoctorFilter').value || 'all'
       state.entries = state.entries.map((entry) => entry.id === entryId ? nextEntry : entry)
       state.inlineEditDate = null
       saveState()
+      restoreAdminFilters(selectedMonth, selectedDoctor)
       renderAll()
+      restoreAdminFilters(selectedMonth, selectedDoctor)
+      renderAdminRecords()
       syncSilently()
     }
 
