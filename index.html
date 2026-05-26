@@ -312,45 +312,9 @@
       align-items: end;
     }
 
-    .input-hero-layout {
-      display: grid;
-      grid-template-columns: minmax(320px, 480px) minmax(260px, 1fr);
-      gap: 24px;
-      align-items: end;
-    }
-
     .daily-entry-form {
       width: min(480px, 100%);
       grid-template-columns: 1fr;
-    }
-
-    .input-hero-image {
-      display: grid;
-      justify-items: center;
-      align-items: end;
-      min-height: 420px;
-      overflow: hidden;
-    }
-
-    .input-hero-image img {
-      width: min(100%, 430px);
-      height: auto;
-      display: block;
-    }
-
-    @media (max-width: 980px) {
-      .input-hero-layout {
-        grid-template-columns: 1fr;
-      }
-
-      .input-hero-image {
-        min-height: 0;
-        justify-items: start;
-      }
-
-      .input-hero-image img {
-        width: min(70%, 320px);
-      }
     }
 
     .form-actions {
@@ -765,7 +729,6 @@
             <h2 class="panel-title">일일 약침 매출 입력</h2>
           </div>
         </div>
-        <div class="input-hero-layout">
         <form class="entry-form daily-entry-form" onsubmit="saveEntry(event)">
           <label>
             날짜
@@ -797,10 +760,6 @@
           </div>
           <div id="saveNotice" class="badge green hidden">제출 완료</div>
         </form>
-        <div class="input-hero-image" aria-hidden="true">
-          <img src="assets/doctors-bow.png" alt="" />
-        </div>
-        </div>
       </section>
 
       <section id="viewLinda" class="panel hidden">
