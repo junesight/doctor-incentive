@@ -312,9 +312,45 @@
       align-items: end;
     }
 
+    .input-hero-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 480px) minmax(260px, 1fr);
+      gap: 24px;
+      align-items: end;
+    }
+
     .daily-entry-form {
       width: min(480px, 100%);
       grid-template-columns: 1fr;
+    }
+
+    .input-hero-image {
+      display: grid;
+      justify-items: center;
+      align-items: end;
+      min-height: 420px;
+      overflow: hidden;
+    }
+
+    .input-hero-image img {
+      width: min(100%, 430px);
+      height: auto;
+      display: block;
+    }
+
+    @media (max-width: 980px) {
+      .input-hero-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .input-hero-image {
+        min-height: 0;
+        justify-items: start;
+      }
+
+      .input-hero-image img {
+        width: min(70%, 320px);
+      }
     }
 
     .form-actions {
@@ -645,6 +681,7 @@
     .hidden { display: none !important; }
     .muted { color: var(--muted); }
     .right { text-align: right; }
+    .center { text-align: center; }
 
     @media (max-width: 980px) {
       .app { grid-template-columns: 1fr; }
@@ -728,6 +765,7 @@
             <h2 class="panel-title">일일 약침 매출 입력</h2>
           </div>
         </div>
+        <div class="input-hero-layout">
         <form class="entry-form daily-entry-form" onsubmit="saveEntry(event)">
           <label>
             날짜
@@ -759,6 +797,10 @@
           </div>
           <div id="saveNotice" class="badge green hidden">제출 완료</div>
         </form>
+        <div class="input-hero-image" aria-hidden="true">
+          <img src="assets/doctors-bow.png" alt="" />
+        </div>
+        </div>
       </section>
 
       <section id="viewLinda" class="panel hidden">
@@ -900,14 +942,14 @@
             </colgroup>
             <thead>
               <tr>
-                <th class="right">날짜</th>
+                <th class="center">날짜</th>
                 <th class="right">대용량정밀약침 건수</th>
                 <th class="right">대용량정밀약침 매출</th>
                 <th class="right">자하거/디나 건수</th>
                 <th class="right">린다이어트 매출</th>
                 <th class="right">수 한약 매출</th>
                 <th class="right">예상 인센티브</th>
-                <th class="right">수정</th>
+                <th class="center">수정</th>
               </tr>
             </thead>
             <tbody id="recordRows"></tbody>
@@ -1060,7 +1102,7 @@
               </colgroup>
               <thead>
                 <tr>
-                  <th class="right">날짜</th>
+                  <th class="center">날짜</th>
                   <th class="right">대용량정밀약침 건수</th>
                   <th class="right">대용량정밀약침 매출</th>
                   <th class="right">자하거/디나 건수</th>
@@ -2266,7 +2308,7 @@
       const totals = getMonthlyTotals(entries)
       return `
         <tr class="monthly-total-row">
-          <td class="right">월 합계</td>
+          <td class="center">월 합계</td>
           <td class="right">${totals.count.toLocaleString('ko-KR')}명</td>
           <td class="right">${formatWon(totals.revenue)}</td>
           <td class="right">${totals.placentaDinaCount.toLocaleString('ko-KR')}명</td>
@@ -2381,14 +2423,14 @@
         if (isEditing) {
           return `
             <tr>
-              <td class="right">${date}</td>
+              <td class="center">${date}</td>
               <td><input id="inlineCount-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.count || ''}" /></td>
               <td><input id="inlineRevenue-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.revenue || ''}" /></td>
               <td><input id="inlinePlacenta-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.placentaDinaCount || ''}" placeholder="" /></td>
               <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
               <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
               <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
-              <td class="right">
+              <td class="center">
                 <div class="inline-actions">
                   <button class="btn primary" onclick="savePersonalInlineEdit('${date}')">저장</button>
                   <button class="btn" onclick="cancelPersonalInlineEdit()">취소</button>
@@ -2400,14 +2442,14 @@
 
         return `
           <tr>
-            <td class="right">${date}</td>
+            <td class="center">${date}</td>
             <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
             <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
             <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '명' : ''}</td>
             <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
             <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
             <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
-            <td class="right">
+            <td class="center">
               ${finalized ? '<span class="muted">확정</span>' : `<button class="btn" onclick="editPersonalDate('${date}')">수정</button>`}
             </td>
           </tr>
@@ -2451,14 +2493,14 @@
         `
         document.getElementById('adminRecordHead').innerHTML = `
           <tr>
-            <th class="right">날짜</th>
+            <th class="center">날짜</th>
             <th class="right">대용량정밀약침 건수</th>
             <th class="right">대용량정밀약침 매출</th>
             <th class="right">자하거/디나 건수</th>
             <th class="right">린다이어트 매출</th>
             <th class="right">수 한약 매출</th>
             <th class="right">예상 인센티브</th>
-            <th class="right">수정</th>
+            <th class="center">수정</th>
           </tr>
         `
         const entriesByDate = new Map(entries.map((entry) => [entry.date, entry]))
@@ -2476,14 +2518,14 @@
           if (isEditing) {
             return `
               <tr>
-                <td class="right">${date}</td>
+                <td class="center">${date}</td>
                 <td><input id="adminInlineCount-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.count || ''}" /></td>
                 <td><input id="adminInlineRevenue-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.revenue || ''}" /></td>
                 <td><input id="adminInlinePlacenta-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.placentaDinaCount || ''}" placeholder="" /></td>
                 <td><input id="adminInlineLinda-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.lindaRevenue || ''}" /></td>
                 <td><input id="adminInlineSu-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.suRevenue || ''}" /></td>
                 <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
-                <td class="right">
+                <td class="center">
                   ${state.adminBulkEdit ? '<span class="muted">일괄 수정</span>' : `
                     <div class="inline-actions">
                       <button class="btn primary" onclick="saveAdminInlineEdit('${selectedDoctor}', '${date}')">저장</button>
@@ -2497,14 +2539,14 @@
 
           return `
             <tr>
-              <td class="right">${date}</td>
+              <td class="center">${date}</td>
               <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
               <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
               <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '명' : ''}</td>
               <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
               <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
               <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
-              <td class="right">
+              <td class="center">
                 <button class="btn" onclick="editAdminDate('${selectedDoctor}', '${date}')">수정</button>
               </td>
             </tr>
@@ -2528,16 +2570,16 @@
       `
       document.getElementById('adminRecordHead').innerHTML = `
         <tr>
-          <th>날짜</th>
-          <th>원장님</th>
+          <th class="center">날짜</th>
+          <th class="center">원장님</th>
           <th class="right">대용량정밀약침 건수</th>
           <th class="right">대용량정밀약침 매출</th>
           <th class="right">자하거/디나 건수</th>
           <th class="right">린다이어트 매출</th>
           <th class="right">수 한약 매출</th>
           <th class="right">예상 인센티브</th>
-          <th>입력 시간</th>
-          <th>관리</th>
+          <th class="center">입력 시간</th>
+          <th class="center">관리</th>
         </tr>
       `
       const allFinalizedDone = areAllDoctorMonthsFinalized(selectedMonth)
@@ -2551,16 +2593,16 @@
         if (isEditing) {
           return `
             <tr>
-              <td>${entry.date}</td>
-              <td><span class="badge doctor-badge ${getDoctorColorClass(entry.doctorId)}">${doctor.name}</span></td>
+              <td class="center">${entry.date}</td>
+              <td class="center"><span class="badge doctor-badge ${getDoctorColorClass(entry.doctorId)}">${doctor.name}</span></td>
               <td><input id="adminEntryCount-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.count || ''}" /></td>
               <td><input id="adminEntryRevenue-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.revenue || ''}" /></td>
               <td><input id="adminEntryPlacenta-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.placentaDinaCount || ''}" placeholder="" /></td>
               <td><input id="adminEntryLinda-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.lindaRevenue || ''}" /></td>
               <td><input id="adminEntrySu-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.suRevenue || ''}" /></td>
               <td class="right">${formatWon(getIncentive(entry))}</td>
-              <td>${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
-              <td>
+              <td class="center">${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
+              <td class="center">
                 ${state.adminBulkEdit ? '<span class="muted">일괄 수정</span>' : `
                   <div class="inline-actions">
                     <button class="btn primary" onclick="saveAdminEntryInlineEdit('${entry.id}')">저장</button>
@@ -2574,16 +2616,16 @@
 
         return `
           <tr>
-            <td>${entry.date}</td>
-            <td><span class="badge doctor-badge ${getDoctorColorClass(entry.doctorId)}">${doctor.name}</span></td>
+            <td class="center">${entry.date}</td>
+            <td class="center"><span class="badge doctor-badge ${getDoctorColorClass(entry.doctorId)}">${doctor.name}</span></td>
             <td class="right">${Number(entry.count || 0).toLocaleString('ko-KR')}명</td>
             <td class="right">${formatWon(entry.revenue)}</td>
             <td class="right">${Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR')}명</td>
             <td class="right">${formatWon(entry.lindaRevenue)}</td>
             <td class="right">${formatWon(entry.suRevenue)}</td>
             <td class="right">${formatWon(getIncentive(entry))}</td>
-            <td>${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
-            <td>
+            <td class="center">${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
+            <td class="center">
               <button class="btn" onclick="editAdminEntry('${entry.id}')">수정</button>
               <button class="btn danger" onclick="deleteEntry('${entry.id}')">삭제</button>
             </td>
@@ -2633,7 +2675,7 @@
 
       rowsTarget.innerHTML = `
         <tr class="monthly-total-row">
-          <td class="right">월 합계</td>
+          <td class="center">월 합계</td>
           <td class="right">${totals.count.toLocaleString('ko-KR')}명</td>
           <td class="right">${formatWon(totals.revenue)}</td>
           <td class="right">${totals.placentaDinaCount.toLocaleString('ko-KR')}명</td>
@@ -2645,7 +2687,7 @@
         const entry = entriesByDate.get(date)
         return `
           <tr>
-            <td class="right">${date}</td>
+            <td class="center">${date}</td>
             <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
             <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
             <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '명' : ''}</td>
