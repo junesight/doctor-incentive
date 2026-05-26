@@ -2068,7 +2068,7 @@
           <td>월 합계</td>
           <td class="right">${totals.count.toLocaleString('ko-KR')}명</td>
           <td class="right">${formatWon(totals.revenue)}</td>
-          <td class="right">${totals.placentaDinaCount.toLocaleString('ko-KR')}건</td>
+          <td class="right">${totals.placentaDinaCount.toLocaleString('ko-KR')}명</td>
           <td class="right">${formatWon(totals.lindaRevenue)}</td>
           <td class="right">${formatWon(totals.suRevenue)}</td>
           <td class="right">${formatWon(totals.incentive)}</td>
@@ -2168,7 +2168,7 @@
             <td>${date}</td>
             <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
             <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
-            <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '건' : ''}</td>
+            <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '명' : ''}</td>
             <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
             <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
             <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
@@ -2257,7 +2257,7 @@
               <td>${date}</td>
               <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
               <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
-              <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '건' : ''}</td>
+              <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '명' : ''}</td>
               <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
               <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
               <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
@@ -2332,7 +2332,7 @@
             <td><span class="badge doctor-badge ${getDoctorColorClass(entry.doctorId)}">${doctor.name}</span></td>
             <td class="right">${Number(entry.count || 0).toLocaleString('ko-KR')}명</td>
             <td class="right">${formatWon(entry.revenue)}</td>
-            <td class="right">${Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR')}건</td>
+            <td class="right">${Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR')}명</td>
             <td class="right">${formatWon(entry.lindaRevenue)}</td>
             <td class="right">${formatWon(entry.suRevenue)}</td>
             <td class="right">${formatWon(getIncentive(entry))}</td>
@@ -2401,7 +2401,7 @@
       const metrics = [
         { label: '대용량정밀약침 건수', value: (item) => `${item.count.toLocaleString('ko-KR')}명`, total: `${totals.count.toLocaleString('ko-KR')}명` },
         { label: '대용량정밀약침 매출', value: (item) => formatWon(item.revenue), total: formatWon(totals.revenue) },
-        { label: '자하거/디나 건수', value: (item) => `${item.placentaDinaCount.toLocaleString('ko-KR')}건`, total: `${totals.placentaDinaCount.toLocaleString('ko-KR')}건` },
+        { label: '자하거/디나 건수', value: (item) => `${item.placentaDinaCount.toLocaleString('ko-KR')}명`, total: `${totals.placentaDinaCount.toLocaleString('ko-KR')}명` },
         { label: '린다이어트 매출', value: (item) => formatWon(item.lindaRevenue), total: formatWon(totals.lindaRevenue) },
         { label: '수 한약 매출', value: (item) => formatWon(item.suRevenue), total: formatWon(totals.suRevenue), divider: true },
         { label: '대용량정밀약침 인센티브', value: (item) => formatWon(item.precisionIncentive), total: formatWon(totals.precision) },
