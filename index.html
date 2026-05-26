@@ -395,6 +395,16 @@
       border-radius: 14px;
     }
 
+    .admin-record-scroll {
+      max-height: 358px;
+    }
+
+    .admin-record-scroll thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -529,6 +539,13 @@
     .badge.yellow { color: var(--yellow); background: var(--yellow-soft); }
     .badge.red { color: var(--red); background: var(--red-soft); }
 
+    .admin-final-status {
+      min-height: 42px;
+      padding: 10px 12px;
+      align-self: flex-end;
+      justify-content: center;
+    }
+
     .doctor-badge {
       color: #111827;
       background: #eef2ff;
@@ -636,8 +653,7 @@
     <main class="main">
       <div class="topbar">
         <div>
-          <h1>목포 부부한의원<br />의료진 인센티브 관리</h1>
-          <div class="page-description">Doctor Incentive Manager v1.0</div>
+          <h1>의료진 인센티브 관리</h1>
         </div>
         <div class="actions">
           <button class="btn primary" onclick="syncNow()">Supabase 동기화</button>
@@ -669,7 +685,7 @@
           </label>
           <label>
             대용량정밀약침 매출(원)
-            <input id="entryRevenue" type="text" inputmode="numeric" pattern="[0-9]*" required placeholder="" />
+            <input id="entryRevenue" type="text" inputmode="numeric" pattern="[0-9,]*" required placeholder="" />
           </label>
           <label>
             자하거/디나 시술 건수(명)
@@ -717,7 +733,7 @@
                 </label>
                 <label>
                   린다이어트 매출
-                  <input id="lindaRevenue" type="text" inputmode="numeric" pattern="[0-9]*" required placeholder="" />
+                  <input id="lindaRevenue" type="text" inputmode="numeric" pattern="[0-9,]*" required placeholder="" />
                 </label>
                 <div class="form-actions">
                   <button class="btn" type="button" onclick="resetLindaForm('linda', true)">초기화</button>
@@ -744,7 +760,7 @@
                 </label>
                 <label>
                   수 한약 매출
-                  <input id="suRevenue" type="text" inputmode="numeric" pattern="[0-9]*" required placeholder="" />
+                  <input id="suRevenue" type="text" inputmode="numeric" pattern="[0-9,]*" required placeholder="" />
                 </label>
                 <div class="form-actions">
                   <button class="btn" type="button" onclick="resetLindaForm('su', true)">초기화</button>
@@ -858,18 +874,19 @@
             <div class="toolbar-left">
               <label>
                 월
-                <input id="adminRecordMonth" type="month" onchange="renderAll()" />
+                <input id="adminRecordMonth" type="month" onchange="handleAdminFilterChange()" />
               </label>
               <label>
                 원장님
-                <select id="adminDoctorFilter" onchange="renderAll()"></select>
+                <select id="adminDoctorFilter" onchange="handleAdminFilterChange()"></select>
               </label>
+              <span id="adminRecordCountLabel" class="badge blue admin-final-status">0개 내역</span>
             </div>
-            <div class="toolbar-right">
-              <span id="adminRecordCountLabel" class="badge blue">0개 내역</span>
+            <div id="adminBulkActions" class="toolbar-right">
+              <button class="btn" type="button" onclick="toggleAdminBulkEdit()">전체 수정</button>
             </div>
           </div>
-          <div class="table-wrap">
+          <div id="adminRecordTableWrap" class="table-wrap">
             <table id="adminRecordTable">
               <colgroup id="adminRecordCols"></colgroup>
               <thead id="adminRecordHead">
@@ -1140,6 +1157,7 @@
       entries: [],
       editingId: null,
       inlineEditDate: null,
+      adminBulkEdit: false,
       finalizedMonths: [],
       auth: {
         personalDoctorId: null,
@@ -1862,6 +1880,27 @@
       return String(value || '').replace(/\D/g, '')
     }
 
+    function formatNumberInput(value) {
+      const digits = toDigits(value)
+      return digits ? Number(digits).toLocaleString('ko-KR') : ''
+    }
+
+    function bindDigitsOnlyInput(id) {
+      const input = document.getElementById(id)
+      if (!input) return
+      input.addEventListener('input', (event) => {
+        event.target.value = toDigits(event.target.value)
+      })
+    }
+
+    function bindCommaNumberInput(id) {
+      const input = document.getElementById(id)
+      if (!input) return
+      input.addEventListener('input', (event) => {
+        event.target.value = formatNumberInput(event.target.value)
+      })
+    }
+
     async function saveEntry(event) {
       event.preventDefault()
       const doctorId = document.getElementById('entryDoctor').value
@@ -2147,7 +2186,13 @@
       const selectedDoctor = document.getElementById('adminDoctorFilter').value || 'all'
       const entries = getAdminEntries()
       const adminSummaryPanel = document.getElementById('adminSummaryPanel')
+      const adminRecordTableWrap = document.getElementById('adminRecordTableWrap')
+      const adminBulkActions = document.getElementById('adminBulkActions')
       adminSummaryPanel.classList.toggle('hidden', selectedDoctor !== 'all')
+      adminRecordTableWrap.classList.toggle('admin-record-scroll', selectedDoctor === 'all')
+      adminBulkActions.innerHTML = state.adminBulkEdit
+        ? '<button class="btn primary" type="button" onclick="saveAdminBulkEdit()">전체 저장</button><button class="btn" type="button" onclick="cancelInlineEdit(\'admin\')">전체 취소</button>'
+        : '<button class="btn" type="button" onclick="toggleAdminBulkEdit()">전체 수정</button>'
       if (selectedDoctor === 'all') {
         renderSummaryTable(selectedMonth, 'adminSummaryHead', 'adminSummaryRows')
       }
@@ -2180,10 +2225,10 @@
         const dates = getDatesInMonth(selectedMonth)
         const doctor = getDoctor(selectedDoctor)
         const finalStatus = isDoctorMonthFinalized(selectedDoctor, selectedMonth) ? '최종 제출 완료' : '최종 제출 미완료'
-        document.getElementById('adminRecordCountLabel').textContent = `${doctor.name} · ${finalStatus} · ${selectedMonth} · ${entries.length.toLocaleString('ko-KR')}일 입력`
+        document.getElementById('adminRecordCountLabel').textContent = `${finalStatus} · ${selectedMonth} · ${entries.length.toLocaleString('ko-KR')}일 입력`
         document.getElementById('adminRecordRows').innerHTML = renderMonthlyTotalRow(entries) + dates.map((date) => {
           const entry = entriesByDate.get(date)
-          const isEditing = state.inlineEditDate === `admin:${selectedDoctor}:${date}`
+          const isEditing = state.adminBulkEdit || state.inlineEditDate === `admin:${selectedDoctor}:${date}`
 
           if (isEditing) {
             return `
@@ -2196,10 +2241,12 @@
                 <td><input id="adminInlineSu-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.suRevenue || ''}" /></td>
                 <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
                 <td>
-                  <div class="inline-actions">
-                    <button class="btn primary" onclick="saveAdminInlineEdit('${selectedDoctor}', '${date}')">저장</button>
-                    <button class="btn" onclick="cancelInlineEdit('admin')">취소</button>
-                  </div>
+                  ${state.adminBulkEdit ? '<span class="muted">일괄 수정</span>' : `
+                    <div class="inline-actions">
+                      <button class="btn primary" onclick="saveAdminInlineEdit('${selectedDoctor}', '${date}')">저장</button>
+                      <button class="btn" onclick="cancelInlineEdit('admin')">취소</button>
+                    </div>
+                  `}
                 </td>
               </tr>
             `
@@ -2253,7 +2300,7 @@
       document.getElementById('adminRecordCountLabel').textContent = getAllFinalizedStatusLabel(selectedMonth)
       document.getElementById('adminRecordRows').innerHTML = entries.length ? entries.map((entry) => {
         const doctor = getDoctor(entry.doctorId)
-        const isEditing = state.inlineEditDate === `adminEntry:${entry.id}`
+        const isEditing = state.adminBulkEdit || state.inlineEditDate === `adminEntry:${entry.id}`
 
         if (isEditing) {
           return `
@@ -2268,10 +2315,12 @@
               <td class="right">${formatWon(getIncentive(entry))}</td>
               <td>${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
               <td>
-                <div class="inline-actions">
-                  <button class="btn primary" onclick="saveAdminEntryInlineEdit('${entry.id}')">저장</button>
-                  <button class="btn" onclick="cancelInlineEdit('admin')">취소</button>
-                </div>
+                ${state.adminBulkEdit ? '<span class="muted">일괄 수정</span>' : `
+                  <div class="inline-actions">
+                    <button class="btn primary" onclick="saveAdminEntryInlineEdit('${entry.id}')">저장</button>
+                    <button class="btn" onclick="cancelInlineEdit('admin')">취소</button>
+                  </div>
+                `}
               </td>
             </tr>
           `
@@ -2391,6 +2440,79 @@
       setView('input')
     }
 
+    function handleAdminFilterChange() {
+      state.inlineEditDate = null
+      state.adminBulkEdit = false
+      renderAll()
+    }
+
+    function toggleAdminBulkEdit() {
+      if (!state.auth.admin) return
+      state.inlineEditDate = null
+      state.adminBulkEdit = !state.adminBulkEdit
+      renderAdminRecords()
+    }
+
+    function saveAdminBulkEdit() {
+      if (!state.auth.admin || !state.adminBulkEdit) return
+      const selectedMonth = document.getElementById('adminRecordMonth').value || monthString()
+      const selectedDoctor = document.getElementById('adminDoctorFilter').value || 'all'
+      const now = new Date().toISOString()
+
+      if (selectedDoctor === 'all') {
+        const entries = getAdminEntries()
+        state.entries = state.entries.map((entry) => {
+          if (!entries.some((item) => item.id === entry.id)) return entry
+          return {
+            ...entry,
+            count: Number(toDigits(document.getElementById(`adminEntryCount-${entry.id}`)?.value) || 0),
+            revenue: Number(toDigits(document.getElementById(`adminEntryRevenue-${entry.id}`)?.value) || 0),
+            placentaDinaCount: Number(toDigits(document.getElementById(`adminEntryPlacenta-${entry.id}`)?.value) || 0),
+            lindaRevenue: Number(toDigits(document.getElementById(`adminEntryLinda-${entry.id}`)?.value) || 0),
+            suRevenue: Number(toDigits(document.getElementById(`adminEntrySu-${entry.id}`)?.value) || 0),
+            updatedAt: now,
+          }
+        })
+      } else {
+        for (const date of getDatesInMonth(selectedMonth)) {
+          const count = toDigits(document.getElementById(`adminInlineCount-${date}`)?.value)
+          const revenue = toDigits(document.getElementById(`adminInlineRevenue-${date}`)?.value)
+          const placentaDinaCount = toDigits(document.getElementById(`adminInlinePlacenta-${date}`)?.value)
+          const lindaRevenue = toDigits(document.getElementById(`adminInlineLinda-${date}`)?.value)
+          const suRevenue = toDigits(document.getElementById(`adminInlineSu-${date}`)?.value)
+          const existingEntry = state.entries.find((item) => item.doctorId === selectedDoctor && item.date === date)
+          const hasAnyValue = count || revenue || placentaDinaCount || lindaRevenue || suRevenue
+          if (!existingEntry && !hasAnyValue) continue
+
+          const nextEntry = {
+            id: existingEntry?.id || crypto.randomUUID(),
+            date,
+            doctorId: selectedDoctor,
+            count: Number(count || 0),
+            revenue: Number(revenue || 0),
+            lindaRevenue: Number(lindaRevenue || 0),
+            suRevenue: Number(suRevenue || 0),
+            placentaDinaCount: Number(placentaDinaCount || 0),
+            memo: '',
+            createdAt: existingEntry?.createdAt || now,
+            updatedAt: now,
+          }
+
+          if (existingEntry) {
+            state.entries = state.entries.map((entry) => entry.id === existingEntry.id ? nextEntry : entry)
+          } else {
+            state.entries.push(nextEntry)
+          }
+        }
+      }
+
+      state.inlineEditDate = null
+      state.adminBulkEdit = false
+      saveState()
+      renderAll()
+      syncSilently()
+    }
+
     function editPersonalDate(date) {
       if (isPersonalMonthFinalized(date.slice(0, 7))) return
       state.inlineEditDate = date
@@ -2407,6 +2529,7 @@
     }
 
     function editAdminDate(doctorId, date) {
+      state.adminBulkEdit = false
       state.inlineEditDate = `admin:${doctorId}:${date}`
       renderAdminRecords()
       const ids = [`adminInlineCount-${date}`, `adminInlineRevenue-${date}`, `adminInlinePlacenta-${date}`, `adminInlineLinda-${date}`, `adminInlineSu-${date}`]
@@ -2421,6 +2544,7 @@
     }
 
     function editAdminEntry(entryId) {
+      state.adminBulkEdit = false
       state.inlineEditDate = `adminEntry:${entryId}`
       renderAdminRecords()
       const ids = [`adminEntryCount-${entryId}`, `adminEntryRevenue-${entryId}`, `adminEntryPlacenta-${entryId}`, `adminEntryLinda-${entryId}`, `adminEntrySu-${entryId}`]
@@ -2441,6 +2565,7 @@
 
     function cancelInlineEdit(scope) {
       state.inlineEditDate = null
+      state.adminBulkEdit = false
       if (scope === 'admin') {
         renderAdminRecords()
         return
@@ -2738,10 +2863,11 @@
       document.getElementById('summaryMonth').value = monthString()
       document.getElementById('lindaDate').value = todayString()
       document.getElementById('suDate').value = todayString()
-      for (const id of ['entryCount', 'entryRevenue', 'entryPlacentaDinaCount', 'lindaRevenue', 'suRevenue']) {
-        document.getElementById(id).addEventListener('input', (event) => {
-          event.target.value = toDigits(event.target.value)
-        })
+      for (const id of ['entryCount', 'entryPlacentaDinaCount']) {
+        bindDigitsOnlyInput(id)
+      }
+      for (const id of ['entryRevenue', 'lindaRevenue', 'suRevenue']) {
+        bindCommaNumberInput(id)
       }
       bindEnterLogin('lindaLoginPin', 'linda')
       bindEnterLogin('personalLoginPin', 'personal')
