@@ -1596,6 +1596,88 @@
       syncNow({ silent: true })
     }
 
+    function mapRemoteEntry(entry) {
+      return {
+        id: entry.id,
+        date: entry.date,
+        doctorId: entry.doctor_id,
+        count: entry.treatment_count,
+        placentaDinaCount: entry.placenta_dina_count || 0,
+        revenue: entry.revenue,
+        lindaRevenue: entry.linda_revenue || 0,
+        suRevenue: entry.su_revenue || 0,
+        memo: entry.memo || '',
+        createdAt: entry.created_at,
+        updatedAt: entry.updated_at,
+      }
+    }
+
+    function getEntrySyncKey(entry) {
+      return `${entry.doctorId}|${entry.date}`
+    }
+
+    function getEntryTime(entry) {
+      return new Date(entry.updatedAt || entry.createdAt || 0).getTime()
+    }
+
+    function mergeDuplicateEntry(base, incoming) {
+      if (base.id === incoming.id) {
+        return getEntryTime(incoming) >= getEntryTime(base) ? incoming : base
+      }
+
+      const newer = getEntryTime(incoming) >= getEntryTime(base) ? incoming : base
+      const older = newer === incoming ? base : incoming
+      return {
+        ...newer,
+        id: base.id,
+        count: Number(newer.count || older.count || 0),
+        revenue: Number(newer.revenue || older.revenue || 0),
+        placentaDinaCount: Number(newer.placentaDinaCount || older.placentaDinaCount || 0),
+        lindaRevenue: Number(base.lindaRevenue || 0) + Number(incoming.lindaRevenue || 0),
+        suRevenue: Number(base.suRevenue || 0) + Number(incoming.suRevenue || 0),
+        createdAt: getEntryTime(base) <= getEntryTime(incoming) ? base.createdAt : incoming.createdAt,
+        updatedAt: newer.updatedAt || new Date().toISOString(),
+      }
+    }
+
+    function mergeEntriesForSync(localEntries, remoteEntries) {
+      const mergedByKey = new Map()
+      const duplicateIds = []
+
+      for (const entry of [...remoteEntries, ...localEntries]) {
+        if (!entry.doctorId || !entry.date) continue
+        const key = getEntrySyncKey(entry)
+        const existing = mergedByKey.get(key)
+        if (!existing) {
+          mergedByKey.set(key, entry)
+          continue
+        }
+        if (existing.id !== entry.id) duplicateIds.push(entry.id)
+        mergedByKey.set(key, mergeDuplicateEntry(existing, entry))
+      }
+
+      return {
+        entries: Array.from(mergedByKey.values()),
+        duplicateIds: [...new Set(duplicateIds)],
+      }
+    }
+
+    function getEntryPayload(entry) {
+      return {
+        id: entry.id,
+        date: entry.date,
+        doctor_id: entry.doctorId,
+        treatment_count: entry.count || 0,
+        placenta_dina_count: entry.placentaDinaCount || 0,
+        revenue: entry.revenue || 0,
+        linda_revenue: entry.lindaRevenue || 0,
+        su_revenue: entry.suRevenue || 0,
+        memo: entry.memo || '',
+        created_at: entry.createdAt,
+        updated_at: entry.updatedAt,
+      }
+    }
+
     async function deleteRemoteEntry(entryId) {
       if (!supabaseClient) return
       const { error } = await supabaseClient
@@ -1631,20 +1713,22 @@
         }
       }
 
-      if (state.entries.length) {
-        const payload = state.entries.map((entry) => ({
-          id: entry.id,
-          date: entry.date,
-          doctor_id: entry.doctorId,
-          treatment_count: entry.count,
-          placenta_dina_count: entry.placentaDinaCount || 0,
-          revenue: entry.revenue,
-          linda_revenue: entry.lindaRevenue || 0,
-          su_revenue: entry.suRevenue || 0,
-          memo: entry.memo || '',
-          created_at: entry.createdAt,
-          updated_at: entry.updatedAt,
-        }))
+      const { data: remoteData, error: remoteLoadError } = await supabaseClient
+        .from('precision_injection_entries')
+        .select('*')
+
+      if (remoteLoadError) {
+        console.error(remoteLoadError)
+        setSyncStatus('동기화 실패', 'red')
+        if (!silent) alert('Supabase 데이터를 불러오지 못했습니다. SQL 스키마와 RLS 설정을 확인해주세요.')
+        return
+      }
+
+      const remoteEntries = (remoteData || []).map(mapRemoteEntry)
+      const merged = mergeEntriesForSync(state.entries, remoteEntries)
+
+      if (merged.entries.length) {
+        const payload = merged.entries.map(getEntryPayload)
 
         const { error } = await supabaseClient
           .from('precision_injection_entries')
@@ -1654,6 +1738,20 @@
           console.error(error)
           setSyncStatus('동기화 실패', 'red')
           if (!silent) alert('Supabase 저장에 실패했습니다. SQL 스키마와 RLS 설정을 확인해주세요.')
+          return
+        }
+      }
+
+      if (merged.duplicateIds.length) {
+        const { error: deleteDuplicateError } = await supabaseClient
+          .from('precision_injection_entries')
+          .delete()
+          .in('id', merged.duplicateIds)
+
+        if (deleteDuplicateError) {
+          console.error(deleteDuplicateError)
+          setSyncStatus('동기화 실패', 'red')
+          if (!silent) alert('중복 데이터 정리에 실패했습니다. 다시 동기화해주세요.')
           return
         }
       }
@@ -1692,19 +1790,7 @@
         return
       }
 
-      state.entries = (data || []).map((entry) => ({
-        id: entry.id,
-        date: entry.date,
-        doctorId: entry.doctor_id,
-        count: entry.treatment_count,
-        placentaDinaCount: entry.placenta_dina_count || 0,
-        revenue: entry.revenue,
-        lindaRevenue: entry.linda_revenue || 0,
-        suRevenue: entry.su_revenue || 0,
-        memo: entry.memo || '',
-        createdAt: entry.created_at,
-        updatedAt: entry.updated_at,
-      }))
+      state.entries = (data || []).map(mapRemoteEntry)
       applyRemoteSettings(settingsRows)
       saveState()
       renderAll()
