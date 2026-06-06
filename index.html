@@ -1491,7 +1491,7 @@
       return `
         <div id="${patientInputId}Wrap" class="revenue-patient-field ${hasRevenue ? '' : 'hidden'}">
           <span>처방 환자</span>
-          <input id="${patientInputId}" type="text" value="${escapeHtml(prescriptionPatientsText(entry, type))}" />
+          <input id="${patientInputId}" type="text" value="${escapeHtml(prescriptionPatientsText(entry, type))}" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" />
         </div>
       `
     }
