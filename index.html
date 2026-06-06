@@ -3132,8 +3132,9 @@
       state.adminBulkEdit = false
       state.inlineEditDate = `admin:${doctorId}:${date}`
       renderAdminRecords()
-      const ids = [`adminInlineCount-${date}`, `adminInlineRevenue-${date}`, `adminInlinePlacenta-${date}`, `adminInlineLinda-${date}`, `adminInlineLindaPatient-${date}`, `adminInlineSu-${date}`, `adminInlineSuPatient-${date}`]
-      for (const id of ids) {
+      const numericIds = [`adminInlineCount-${date}`, `adminInlineRevenue-${date}`, `adminInlinePlacenta-${date}`, `adminInlineLinda-${date}`, `adminInlineSu-${date}`]
+      const ids = [...numericIds, `adminInlineLindaPatient-${date}`, `adminInlineSuPatient-${date}`]
+      for (const id of numericIds) {
         const input = document.getElementById(id)
         if (!input) continue
         input.addEventListener('input', (event) => {
@@ -3147,8 +3148,9 @@
       state.adminBulkEdit = false
       state.inlineEditDate = `adminEntry:${entryId}`
       renderAdminRecords()
-      const ids = [`adminEntryCount-${entryId}`, `adminEntryRevenue-${entryId}`, `adminEntryPlacenta-${entryId}`, `adminEntryLinda-${entryId}`, `adminEntryLindaPatient-${entryId}`, `adminEntrySu-${entryId}`, `adminEntrySuPatient-${entryId}`]
-      for (const id of ids) {
+      const numericIds = [`adminEntryCount-${entryId}`, `adminEntryRevenue-${entryId}`, `adminEntryPlacenta-${entryId}`, `adminEntryLinda-${entryId}`, `adminEntrySu-${entryId}`]
+      const ids = [...numericIds, `adminEntryLindaPatient-${entryId}`, `adminEntrySuPatient-${entryId}`]
+      for (const id of numericIds) {
         const input = document.getElementById(id)
         if (!input) continue
         input.addEventListener('input', (event) => {
