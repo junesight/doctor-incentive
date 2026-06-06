@@ -805,6 +805,10 @@
                   린다이어트 매출
                   <input id="lindaRevenue" type="text" inputmode="numeric" pattern="[0-9,]*" required placeholder="" />
                 </label>
+                <label>
+                  처방 환자
+                  <input id="lindaPatient" type="text" placeholder="" />
+                </label>
                 <div class="form-actions">
                   <button class="btn" type="button" onclick="resetLindaForm('linda', true)">초기화</button>
                   <button class="btn primary" type="submit">저장</button>
@@ -831,6 +835,10 @@
                 <label>
                   수 한약 매출
                   <input id="suRevenue" type="text" inputmode="numeric" pattern="[0-9,]*" required placeholder="" />
+                </label>
+                <label>
+                  처방 환자
+                  <input id="suPatient" type="text" placeholder="" />
                 </label>
                 <div class="form-actions">
                   <button class="btn" type="button" onclick="resetLindaForm('su', true)">초기화</button>
@@ -1341,6 +1349,56 @@
       return Number(value || 0).toLocaleString('ko-KR') + '원'
     }
 
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      }[char]))
+    }
+
+    function getEntryMemoData(memo) {
+      if (!memo) return { lindaPatients: [], suPatients: [] }
+      try {
+        const parsed = JSON.parse(memo)
+        return {
+          lindaPatients: Array.isArray(parsed.lindaPatients) ? parsed.lindaPatients : [],
+          suPatients: Array.isArray(parsed.suPatients) ? parsed.suPatients : [],
+        }
+      } catch (error) {
+        return { lindaPatients: [], suPatients: [] }
+      }
+    }
+
+    function mergePatientNames(...lists) {
+      return [...new Set(lists.flat().map((name) => String(name || '').trim()).filter(Boolean))]
+    }
+
+    function mergeEntryMemo(leftMemo, rightMemo) {
+      const left = getEntryMemoData(leftMemo)
+      const right = getEntryMemoData(rightMemo)
+      return JSON.stringify({
+        lindaPatients: mergePatientNames(left.lindaPatients, right.lindaPatients),
+        suPatients: mergePatientNames(left.suPatients, right.suPatients),
+      })
+    }
+
+    function addPrescriptionPatient(memo, type, patientName) {
+      const data = getEntryMemoData(memo)
+      const key = type === 'su' ? 'suPatients' : 'lindaPatients'
+      data[key] = mergePatientNames(data[key], [patientName])
+      return JSON.stringify(data)
+    }
+
+    function prescriptionTooltip(entry, type) {
+      if (!entry) return ''
+      const data = getEntryMemoData(entry.memo)
+      const names = type === 'su' ? data.suPatients : data.lindaPatients
+      return names.length ? ` title="처방 환자 : ${escapeHtml(names.join(', '))}"` : ''
+    }
+
     function formatDateTime(value) {
       if (!value) return '-'
       return new Date(value).toLocaleString('ko-KR', {
@@ -1636,6 +1694,7 @@
         placentaDinaCount: Number(newer.placentaDinaCount || older.placentaDinaCount || 0),
         lindaRevenue: Number(base.lindaRevenue || 0) + Number(incoming.lindaRevenue || 0),
         suRevenue: Number(base.suRevenue || 0) + Number(incoming.suRevenue || 0),
+        memo: mergeEntryMemo(base.memo, incoming.memo),
         createdAt: getEntryTime(base) <= getEntryTime(incoming) ? base.createdAt : incoming.createdAt,
         updatedAt: newer.updatedAt || new Date().toISOString(),
       }
@@ -2232,7 +2291,7 @@
         revenue: Number(revenue),
         lindaRevenue: previousEntry?.lindaRevenue || 0,
         suRevenue: previousEntry?.suRevenue || 0,
-        memo: '',
+        memo: previousEntry?.memo || '',
         createdAt: previousEntry?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -2252,25 +2311,27 @@
 
     function resetLindaForm(type, clearDoctor = false) {
       const ids = type === 'su'
-        ? { doctor: 'suDoctor', date: 'suDate', revenue: 'suRevenue', notice: 'suSaveNotice' }
-        : { doctor: 'lindaDoctor', date: 'lindaDate', revenue: 'lindaRevenue', notice: 'lindaSaveNotice' }
+        ? { doctor: 'suDoctor', date: 'suDate', revenue: 'suRevenue', patient: 'suPatient', notice: 'suSaveNotice' }
+        : { doctor: 'lindaDoctor', date: 'lindaDate', revenue: 'lindaRevenue', patient: 'lindaPatient', notice: 'lindaSaveNotice' }
 
       if (clearDoctor) {
         document.getElementById(ids.doctor).value = ''
       }
       document.getElementById(ids.date).value = todayString()
       document.getElementById(ids.revenue).value = ''
+      document.getElementById(ids.patient).value = ''
       document.getElementById(ids.notice).classList.add('hidden')
     }
 
     function saveLindaEntry(event, type) {
       event.preventDefault()
       const ids = type === 'su'
-        ? { doctor: 'suDoctor', date: 'suDate', revenue: 'suRevenue', notice: 'suSaveNotice' }
-        : { doctor: 'lindaDoctor', date: 'lindaDate', revenue: 'lindaRevenue', notice: 'lindaSaveNotice' }
+        ? { doctor: 'suDoctor', date: 'suDate', revenue: 'suRevenue', patient: 'suPatient', notice: 'suSaveNotice' }
+        : { doctor: 'lindaDoctor', date: 'lindaDate', revenue: 'lindaRevenue', patient: 'lindaPatient', notice: 'lindaSaveNotice' }
       const doctorId = document.getElementById(ids.doctor).value
       const date = document.getElementById(ids.date).value
       const revenue = Number(toDigits(document.getElementById(ids.revenue).value) || 0)
+      const patientName = document.getElementById(ids.patient).value.trim()
 
       if (!doctorId) {
         alert('원장님을 선택해주세요.')
@@ -2294,7 +2355,7 @@
         revenue: existingEntry?.revenue || 0,
         lindaRevenue: Number(existingEntry?.lindaRevenue || 0) + lindaRevenue,
         suRevenue: Number(existingEntry?.suRevenue || 0) + suRevenue,
-        memo: existingEntry?.memo || '',
+        memo: addPrescriptionPatient(existingEntry?.memo || '', type, patientName),
         createdAt: existingEntry?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -2308,6 +2369,7 @@
       saveState()
       syncSilently()
       document.getElementById(ids.revenue).value = ''
+      document.getElementById(ids.patient).value = ''
       document.getElementById(ids.date).value = todayString()
       document.getElementById(ids.notice).classList.remove('hidden')
       renderAll()
@@ -2479,8 +2541,8 @@
               <td><input id="inlineCount-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.count || ''}" /></td>
               <td><input id="inlineRevenue-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.revenue || ''}" /></td>
               <td><input id="inlinePlacenta-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.placentaDinaCount || ''}" placeholder="" /></td>
-              <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
-              <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+              <td class="right"${prescriptionTooltip(entry, 'linda')}>${entry ? formatWon(entry.lindaRevenue) : ''}</td>
+              <td class="right"${prescriptionTooltip(entry, 'su')}>${entry ? formatWon(entry.suRevenue) : ''}</td>
               <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
               <td class="center">
                 <div class="inline-actions">
@@ -2498,8 +2560,8 @@
             <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
             <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
             <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '명' : ''}</td>
-            <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
-            <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+            <td class="right"${prescriptionTooltip(entry, 'linda')}>${entry ? formatWon(entry.lindaRevenue) : ''}</td>
+            <td class="right"${prescriptionTooltip(entry, 'su')}>${entry ? formatWon(entry.suRevenue) : ''}</td>
             <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
             <td class="center">
               ${finalized ? '<span class="muted">확정</span>' : `<button class="btn" onclick="editPersonalDate('${date}')">수정</button>`}
@@ -2595,8 +2657,8 @@
               <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
               <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
               <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '명' : ''}</td>
-              <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
-              <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+              <td class="right"${prescriptionTooltip(entry, 'linda')}>${entry ? formatWon(entry.lindaRevenue) : ''}</td>
+              <td class="right"${prescriptionTooltip(entry, 'su')}>${entry ? formatWon(entry.suRevenue) : ''}</td>
               <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
               <td class="center">
                 <button class="btn" onclick="editAdminDate('${selectedDoctor}', '${date}')">수정</button>
@@ -2673,8 +2735,8 @@
             <td class="right">${Number(entry.count || 0).toLocaleString('ko-KR')}명</td>
             <td class="right">${formatWon(entry.revenue)}</td>
             <td class="right">${Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR')}명</td>
-            <td class="right">${formatWon(entry.lindaRevenue)}</td>
-            <td class="right">${formatWon(entry.suRevenue)}</td>
+            <td class="right"${prescriptionTooltip(entry, 'linda')}>${formatWon(entry.lindaRevenue)}</td>
+            <td class="right"${prescriptionTooltip(entry, 'su')}>${formatWon(entry.suRevenue)}</td>
             <td class="right">${formatWon(getIncentive(entry))}</td>
             <td class="center">${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
             <td class="center">
@@ -2743,8 +2805,8 @@
             <td class="right">${entry ? Number(entry.count || 0).toLocaleString('ko-KR') + '명' : ''}</td>
             <td class="right">${entry ? formatWon(entry.revenue) : ''}</td>
             <td class="right">${entry ? Number(entry.placentaDinaCount || 0).toLocaleString('ko-KR') + '명' : ''}</td>
-            <td class="right">${entry ? formatWon(entry.lindaRevenue) : ''}</td>
-            <td class="right">${entry ? formatWon(entry.suRevenue) : ''}</td>
+              <td class="right"${prescriptionTooltip(entry, 'linda')}>${entry ? formatWon(entry.lindaRevenue) : ''}</td>
+              <td class="right"${prescriptionTooltip(entry, 'su')}>${entry ? formatWon(entry.suRevenue) : ''}</td>
             <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
           </tr>
         `
@@ -2905,7 +2967,7 @@
             lindaRevenue: Number(lindaRevenue || 0),
             suRevenue: Number(suRevenue || 0),
             placentaDinaCount: Number(placentaDinaCount || 0),
-            memo: '',
+            memo: existingEntry?.memo || '',
             createdAt: existingEntry?.createdAt || now,
             updatedAt: now,
           }
@@ -3024,7 +3086,7 @@
         lindaRevenue: existingEntry?.lindaRevenue || 0,
         suRevenue: existingEntry?.suRevenue || 0,
         placentaDinaCount: Number(placentaDinaCount || 0),
-        memo: '',
+        memo: existingEntry?.memo || '',
         createdAt: existingEntry?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -3060,7 +3122,7 @@
         lindaRevenue: Number(lindaRevenue || 0),
         suRevenue: Number(suRevenue || 0),
         placentaDinaCount: Number(placentaDinaCount || 0),
-        memo: '',
+        memo: existingEntry?.memo || '',
         createdAt: existingEntry?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
