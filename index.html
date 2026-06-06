@@ -624,6 +624,23 @@
     .doctor-color-4 { background: #ede9fe; color: #5b21b6; }
     .doctor-color-5 { background: #ccfbf1; color: #0f766e; }
 
+    .revenue-patient-field {
+      display: grid;
+      gap: 4px;
+      margin-top: 6px;
+      text-align: left;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .revenue-patient-field input {
+      width: 100%;
+      min-height: 30px;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+
     .login-screen {
       min-height: 100vh;
       display: grid;
@@ -1392,11 +1409,46 @@
       return JSON.stringify(data)
     }
 
+    function applyPrescriptionPatients(memo, lindaPatientName, suPatientName) {
+      let nextMemo = memo || ''
+      if (String(lindaPatientName || '').trim()) {
+        nextMemo = addPrescriptionPatient(nextMemo, 'linda', lindaPatientName)
+      }
+      if (String(suPatientName || '').trim()) {
+        nextMemo = addPrescriptionPatient(nextMemo, 'su', suPatientName)
+      }
+      return nextMemo
+    }
+
     function prescriptionTooltip(entry, type) {
       if (!entry) return ''
       const data = getEntryMemoData(entry.memo)
       const names = type === 'su' ? data.suPatients : data.lindaPatients
       return names.length ? ` title="처방 환자 : ${escapeHtml(names.join(', '))}"` : ''
+    }
+
+    function prescriptionPatientsText(entry, type) {
+      if (!entry) return ''
+      const data = getEntryMemoData(entry.memo)
+      const names = type === 'su' ? data.suPatients : data.lindaPatients
+      return names.join(', ')
+    }
+
+    function renderAdminPatientField(revenueInputId, patientInputId, entry, type, value) {
+      const hasRevenue = Number(value || 0) > 0
+      return `
+        <div id="${patientInputId}Wrap" class="revenue-patient-field ${hasRevenue ? '' : 'hidden'}">
+          <span>처방 환자</span>
+          <input id="${patientInputId}" type="text" value="${escapeHtml(prescriptionPatientsText(entry, type))}" />
+        </div>
+      `
+    }
+
+    function toggleAdminPatientField(revenueInputId, patientInputId) {
+      const revenueInput = document.getElementById(revenueInputId)
+      const patientWrap = document.getElementById(`${patientInputId}Wrap`)
+      if (!revenueInput || !patientWrap) return
+      patientWrap.classList.toggle('hidden', !toDigits(revenueInput.value))
     }
 
     function formatDateTime(value) {
@@ -2636,8 +2688,14 @@
                 <td><input id="adminInlineCount-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.count || ''}" /></td>
                 <td><input id="adminInlineRevenue-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.revenue || ''}" /></td>
                 <td><input id="adminInlinePlacenta-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.placentaDinaCount || ''}" placeholder="" /></td>
-                <td><input id="adminInlineLinda-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.lindaRevenue || ''}" /></td>
-                <td><input id="adminInlineSu-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.suRevenue || ''}" /></td>
+                <td>
+                  <input id="adminInlineLinda-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.lindaRevenue || ''}" oninput="toggleAdminPatientField('adminInlineLinda-${date}', 'adminInlineLindaPatient-${date}')" />
+                  ${renderAdminPatientField(`adminInlineLinda-${date}`, `adminInlineLindaPatient-${date}`, entry, 'linda', entry?.lindaRevenue || '')}
+                </td>
+                <td>
+                  <input id="adminInlineSu-${date}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry?.suRevenue || ''}" oninput="toggleAdminPatientField('adminInlineSu-${date}', 'adminInlineSuPatient-${date}')" />
+                  ${renderAdminPatientField(`adminInlineSu-${date}`, `adminInlineSuPatient-${date}`, entry, 'su', entry?.suRevenue || '')}
+                </td>
                 <td class="right">${entry ? formatWon(getIncentive(entry)) : ''}</td>
                 <td class="center">
                   ${state.adminBulkEdit ? '<span class="muted">일괄 수정</span>' : `
@@ -2712,8 +2770,14 @@
               <td><input id="adminEntryCount-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.count || ''}" /></td>
               <td><input id="adminEntryRevenue-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.revenue || ''}" /></td>
               <td><input id="adminEntryPlacenta-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.placentaDinaCount || ''}" placeholder="" /></td>
-              <td><input id="adminEntryLinda-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.lindaRevenue || ''}" /></td>
-              <td><input id="adminEntrySu-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.suRevenue || ''}" /></td>
+              <td>
+                <input id="adminEntryLinda-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.lindaRevenue || ''}" oninput="toggleAdminPatientField('adminEntryLinda-${entry.id}', 'adminEntryLindaPatient-${entry.id}')" />
+                ${renderAdminPatientField(`adminEntryLinda-${entry.id}`, `adminEntryLindaPatient-${entry.id}`, entry, 'linda', entry.lindaRevenue || '')}
+              </td>
+              <td>
+                <input id="adminEntrySu-${entry.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${entry.suRevenue || ''}" oninput="toggleAdminPatientField('adminEntrySu-${entry.id}', 'adminEntrySuPatient-${entry.id}')" />
+                ${renderAdminPatientField(`adminEntrySu-${entry.id}`, `adminEntrySuPatient-${entry.id}`, entry, 'su', entry.suRevenue || '')}
+              </td>
               <td class="right">${formatWon(getIncentive(entry))}</td>
               <td class="center">${formatDateTime(entry.updatedAt || entry.createdAt)}</td>
               <td class="center">
@@ -2944,6 +3008,11 @@
             placentaDinaCount: Number(toDigits(document.getElementById(`adminEntryPlacenta-${entry.id}`)?.value) || 0),
             lindaRevenue: Number(toDigits(document.getElementById(`adminEntryLinda-${entry.id}`)?.value) || 0),
             suRevenue: Number(toDigits(document.getElementById(`adminEntrySu-${entry.id}`)?.value) || 0),
+            memo: applyPrescriptionPatients(
+              entry.memo,
+              document.getElementById(`adminEntryLindaPatient-${entry.id}`)?.value,
+              document.getElementById(`adminEntrySuPatient-${entry.id}`)?.value,
+            ),
             updatedAt: now,
           }
         })
@@ -2954,6 +3023,8 @@
           const placentaDinaCount = toDigits(document.getElementById(`adminInlinePlacenta-${date}`)?.value)
           const lindaRevenue = toDigits(document.getElementById(`adminInlineLinda-${date}`)?.value)
           const suRevenue = toDigits(document.getElementById(`adminInlineSu-${date}`)?.value)
+          const lindaPatient = document.getElementById(`adminInlineLindaPatient-${date}`)?.value
+          const suPatient = document.getElementById(`adminInlineSuPatient-${date}`)?.value
           const existingEntry = state.entries.find((item) => item.doctorId === selectedDoctor && item.date === date)
           const hasAnyValue = count || revenue || placentaDinaCount || lindaRevenue || suRevenue
           if (!existingEntry && !hasAnyValue) continue
@@ -2967,7 +3038,7 @@
             lindaRevenue: Number(lindaRevenue || 0),
             suRevenue: Number(suRevenue || 0),
             placentaDinaCount: Number(placentaDinaCount || 0),
-            memo: existingEntry?.memo || '',
+            memo: applyPrescriptionPatients(existingEntry?.memo || '', lindaPatient, suPatient),
             createdAt: existingEntry?.createdAt || now,
             updatedAt: now,
           }
@@ -3009,7 +3080,7 @@
       state.adminBulkEdit = false
       state.inlineEditDate = `admin:${doctorId}:${date}`
       renderAdminRecords()
-      const ids = [`adminInlineCount-${date}`, `adminInlineRevenue-${date}`, `adminInlinePlacenta-${date}`, `adminInlineLinda-${date}`, `adminInlineSu-${date}`]
+      const ids = [`adminInlineCount-${date}`, `adminInlineRevenue-${date}`, `adminInlinePlacenta-${date}`, `adminInlineLinda-${date}`, `adminInlineLindaPatient-${date}`, `adminInlineSu-${date}`, `adminInlineSuPatient-${date}`]
       for (const id of ids) {
         const input = document.getElementById(id)
         if (!input) continue
@@ -3024,7 +3095,7 @@
       state.adminBulkEdit = false
       state.inlineEditDate = `adminEntry:${entryId}`
       renderAdminRecords()
-      const ids = [`adminEntryCount-${entryId}`, `adminEntryRevenue-${entryId}`, `adminEntryPlacenta-${entryId}`, `adminEntryLinda-${entryId}`, `adminEntrySu-${entryId}`]
+      const ids = [`adminEntryCount-${entryId}`, `adminEntryRevenue-${entryId}`, `adminEntryPlacenta-${entryId}`, `adminEntryLinda-${entryId}`, `adminEntryLindaPatient-${entryId}`, `adminEntrySu-${entryId}`, `adminEntrySuPatient-${entryId}`]
       for (const id of ids) {
         const input = document.getElementById(id)
         if (!input) continue
@@ -3111,6 +3182,8 @@
       const placentaDinaCount = toDigits(document.getElementById(`adminInlinePlacenta-${date}`).value)
       const lindaRevenue = toDigits(document.getElementById(`adminInlineLinda-${date}`).value)
       const suRevenue = toDigits(document.getElementById(`adminInlineSu-${date}`).value)
+      const lindaPatient = document.getElementById(`adminInlineLindaPatient-${date}`)?.value
+      const suPatient = document.getElementById(`adminInlineSuPatient-${date}`)?.value
 
       const existingEntry = state.entries.find((item) => item.doctorId === doctorId && item.date === date)
       const nextEntry = {
@@ -3122,7 +3195,7 @@
         lindaRevenue: Number(lindaRevenue || 0),
         suRevenue: Number(suRevenue || 0),
         placentaDinaCount: Number(placentaDinaCount || 0),
-        memo: existingEntry?.memo || '',
+        memo: applyPrescriptionPatients(existingEntry?.memo || '', lindaPatient, suPatient),
         createdAt: existingEntry?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -3154,6 +3227,8 @@
       const placentaDinaCount = toDigits(document.getElementById(`adminEntryPlacenta-${entryId}`).value)
       const lindaRevenue = toDigits(document.getElementById(`adminEntryLinda-${entryId}`).value)
       const suRevenue = toDigits(document.getElementById(`adminEntrySu-${entryId}`).value)
+      const lindaPatient = document.getElementById(`adminEntryLindaPatient-${entryId}`)?.value
+      const suPatient = document.getElementById(`adminEntrySuPatient-${entryId}`)?.value
 
       const nextEntry = {
         ...existingEntry,
@@ -3162,6 +3237,7 @@
         placentaDinaCount: Number(placentaDinaCount || 0),
         lindaRevenue: Number(lindaRevenue || 0),
         suRevenue: Number(suRevenue || 0),
+        memo: applyPrescriptionPatients(existingEntry.memo, lindaPatient, suPatient),
         updatedAt: new Date().toISOString(),
       }
 
