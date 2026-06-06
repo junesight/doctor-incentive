@@ -677,6 +677,27 @@
     .right { text-align: right; }
     .center { text-align: center; }
 
+    td[data-patients] {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      text-underline-offset: 3px;
+    }
+
+    .prescription-popup {
+      position: fixed;
+      z-index: 30;
+      max-width: 260px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #111827;
+      color: white;
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
     @media (max-width: 980px) {
       .app { grid-template-columns: 1fr; }
       .sidebar {
@@ -1264,6 +1285,8 @@
     </div>
   </div>
 
+  <div id="prescriptionPopup" class="prescription-popup hidden"></div>
+
   <script>
     const STORAGE_KEY = 'bubu_doctor_incentive_manager_v1'
     const CONFIG_KEY = 'bubu_precision_counter_config_v1'
@@ -1430,7 +1453,30 @@
       if (!entry) return ''
       const data = getEntryMemoData(entry.memo)
       const names = type === 'su' ? data.suPatients : data.lindaPatients
-      return names.length ? ` title="처방 환자 : ${escapeHtml(names.join(', '))}"` : ''
+      return names.length
+        ? ` data-patients="${escapeHtml(names.join(', '))}" onclick="showPrescriptionPopup(event, this)"`
+        : ''
+    }
+
+    function showPrescriptionPopup(event, target) {
+      event.stopPropagation()
+      const popup = document.getElementById('prescriptionPopup')
+      const names = target.dataset.patients || ''
+      if (!names) return
+
+      popup.textContent = `처방 환자 : ${names}`
+      popup.classList.remove('hidden')
+
+      const margin = 12
+      const rect = popup.getBoundingClientRect()
+      const left = Math.min(event.clientX + margin, window.innerWidth - rect.width - margin)
+      const top = Math.min(event.clientY + margin, window.innerHeight - rect.height - margin)
+      popup.style.left = `${Math.max(margin, left)}px`
+      popup.style.top = `${Math.max(margin, top)}px`
+    }
+
+    function hidePrescriptionPopup() {
+      document.getElementById('prescriptionPopup')?.classList.add('hidden')
     }
 
     function prescriptionPatientsText(entry, type) {
@@ -3425,10 +3471,12 @@
       }
       document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return
+        hidePrescriptionPopup()
         if (document.getElementById('authModalBackdrop').classList.contains('hidden')) return
         event.preventDefault()
         closeAuthModal()
       })
+      document.addEventListener('click', hidePrescriptionPopup)
     }
 
     function initialize() {
