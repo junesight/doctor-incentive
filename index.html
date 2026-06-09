@@ -1385,6 +1385,12 @@
       return date.slice(0, 7)
     }
 
+    function previousMonthString() {
+      const [year, month] = monthString().split('-').map(Number)
+      const previous = new Date(year, month - 2, 1)
+      return `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}`
+    }
+
     function getDatesInMonth(month) {
       const [year, monthNumber] = month.split('-').map(Number)
       const lastDay = new Date(year, monthNumber, 0).getDate()
@@ -2866,7 +2872,7 @@
 
     function renderSummary() {
       if (!state.auth.payroll) return
-      const month = document.getElementById('summaryMonth').value || monthString()
+      const month = document.getElementById('summaryMonth').value || previousMonthString()
       const summaryDetailPanel = document.getElementById('summaryDetailPanel')
       const summaryDetailTableWrap = document.getElementById('summaryDetailTableWrap')
       if (!isAdminMonthFinalized(month)) {
@@ -2884,7 +2890,7 @@
 
     function renderSummaryDetail() {
       if (!state.auth.payroll) return
-      const month = document.getElementById('summaryMonth').value || monthString()
+      const month = document.getElementById('summaryMonth').value || previousMonthString()
       const doctorId = document.getElementById('summaryDetailDoctor').value
       const tableWrap = document.getElementById('summaryDetailTableWrap')
       const rowsTarget = document.getElementById('summaryDetailRows')
@@ -3491,7 +3497,7 @@
       document.getElementById('entryDate').value = todayString()
       document.getElementById('recordMonth').value = monthString()
       document.getElementById('adminRecordMonth').value = monthString()
-      document.getElementById('summaryMonth').value = monthString()
+      document.getElementById('summaryMonth').value = previousMonthString()
       document.getElementById('lindaDate').value = todayString()
       document.getElementById('suDate').value = todayString()
       for (const id of ['entryCount', 'entryPlacentaDinaCount']) {
