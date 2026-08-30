@@ -716,6 +716,40 @@
       .entry-form { grid-template-columns: 1fr; }
       h1 { font-size: 23px; }
     }
+
+    .date-input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .date-input-group input[type="date"] {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .date-nav-btn {
+      min-height: 42px;
+      width: 42px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .date-nav-btn:hover {
+      background: var(--bg);
+      border-color: var(--muted);
+    }
   </style>
 </head>
 <body>
@@ -783,7 +817,11 @@
         <form class="entry-form daily-entry-form" onsubmit="saveEntry(event)">
           <label>
             날짜
-            <input id="entryDate" type="date" required />
+            <div class="date-input-group">
+              <input id="entryDate" type="date" required onclick="try { this.showPicker(); } catch(e) {}" />
+              <button type="button" class="date-nav-btn" onclick="adjustDate('entryDate', -1)">&lt;</button>
+              <button type="button" class="date-nav-btn" onclick="adjustDate('entryDate', 1)">&gt;</button>
+            </div>
           </label>
           <label id="doctorField">
             원장님
@@ -843,7 +881,11 @@
                 </label>
                 <label>
                   날짜
-                  <input id="lindaDate" type="date" required />
+                  <div class="date-input-group">
+                    <input id="lindaDate" type="date" required onclick="try { this.showPicker(); } catch(e) {}" />
+                    <button type="button" class="date-nav-btn" onclick="adjustDate('lindaDate', -1)">&lt;</button>
+                    <button type="button" class="date-nav-btn" onclick="adjustDate('lindaDate', 1)">&gt;</button>
+                  </div>
                 </label>
                 <label>
                   린다이어트 매출
@@ -874,7 +916,11 @@
                 </label>
                 <label>
                   날짜
-                  <input id="suDate" type="date" required />
+                  <div class="date-input-group">
+                    <input id="suDate" type="date" required onclick="try { this.showPicker(); } catch(e) {}" />
+                    <button type="button" class="date-nav-btn" onclick="adjustDate('suDate', -1)">&lt;</button>
+                    <button type="button" class="date-nav-btn" onclick="adjustDate('suDate', 1)">&gt;</button>
+                  </div>
                 </label>
                 <label>
                   수 한약 매출
@@ -938,7 +984,11 @@
           <div class="toolbar-left">
             <label>
               월
-              <input id="recordMonth" type="month" onchange="renderAll()" />
+              <div class="date-input-group">
+                <input id="recordMonth" type="month" onchange="renderAll()" onclick="try { this.showPicker(); } catch(e) {}" />
+                <button type="button" class="date-nav-btn" onclick="adjustMonth('recordMonth', -1)">&lt;</button>
+                <button type="button" class="date-nav-btn" onclick="adjustMonth('recordMonth', 1)">&gt;</button>
+              </div>
             </label>
             <button id="personalFinalizeButton" class="btn toolbar-action" onclick="confirmPersonalMonth()">월 최종 내역 확인 완료</button>
           </div>
@@ -996,7 +1046,11 @@
             <div class="toolbar-left">
               <label>
                 월
-                <input id="adminRecordMonth" type="month" onchange="handleAdminFilterChange()" />
+                <div class="date-input-group">
+                  <input id="adminRecordMonth" type="month" onchange="handleAdminFilterChange()" onclick="try { this.showPicker(); } catch(e) {}" />
+                  <button type="button" class="date-nav-btn" onclick="adjustMonth('adminRecordMonth', -1)">&lt;</button>
+                  <button type="button" class="date-nav-btn" onclick="adjustMonth('adminRecordMonth', 1)">&gt;</button>
+                </div>
               </label>
               <label>
                 원장님
@@ -1083,7 +1137,11 @@
           <div class="toolbar-left">
             <label>
               월
-              <input id="summaryMonth" type="month" onchange="renderAll()" />
+              <div class="date-input-group">
+                <input id="summaryMonth" type="month" onchange="renderAll()" onclick="try { this.showPicker(); } catch(e) {}" />
+                <button type="button" class="date-nav-btn" onclick="adjustMonth('summaryMonth', -1)">&lt;</button>
+                <button type="button" class="date-nav-btn" onclick="adjustMonth('summaryMonth', 1)">&gt;</button>
+              </div>
             </label>
           </div>
         </div>
@@ -1379,6 +1437,39 @@
       const now = new Date()
       const timezoneOffset = now.getTimezoneOffset() * 60000
       return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 10)
+    }
+
+    function adjustDate(inputId, offset) {
+      const entryDateInput = document.getElementById(inputId)
+      if (!entryDateInput) return
+      const val = entryDateInput.value || todayString()
+      const parts = val.split('-')
+      if (parts.length !== 3) return
+      const year = parseInt(parts[0], 10)
+      const month = parseInt(parts[1], 10) - 1
+      const day = parseInt(parts[2], 10)
+      const d = new Date(year, month, day)
+      d.setDate(d.getDate() + offset)
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const date = String(d.getDate()).padStart(2, '0')
+      entryDateInput.value = `${y}-${m}-${date}`
+    }
+
+    function adjustMonth(inputId, offset) {
+      const input = document.getElementById(inputId)
+      if (!input) return
+      const val = input.value || monthString()
+      const parts = val.split('-')
+      if (parts.length !== 2) return
+      const year = parseInt(parts[0], 10)
+      const month = parseInt(parts[1], 10) - 1
+      const d = new Date(year, month, 1)
+      d.setMonth(d.getMonth() + offset)
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      input.value = `${y}-${m}`
+      input.dispatchEvent(new Event('change'))
     }
 
     function monthString(date = todayString()) {
@@ -3420,7 +3511,7 @@
           </label>
           <label>
             변경 시점
-            <input id="${item.key}EffectiveFrom" type="date" value="${getLatestProcedureRateDate(item.key)}" />
+            <input id="${item.key}EffectiveFrom" type="date" value="${getLatestProcedureRateDate(item.key)}" onclick="try { this.showPicker(); } catch(e) {}" />
           </label>
         </div>
       `).join('')
