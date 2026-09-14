@@ -751,6 +751,17 @@
       border-color: var(--muted);
     }
   </style>
+
+  <style>
+    .in-portal .sidebar { display: none !important; }
+    .in-portal .app { display: block !important; width: 100% !important; grid-template-columns: 1fr !important; }
+    .in-portal .main { padding: 20px 24px !important; width: 100% !important; box-sizing: border-box !important; }
+  </style>
+  <script>
+    if (window.self !== window.top) {
+      document.documentElement.classList.add('in-portal');
+    }
+  </script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen hidden">
@@ -3614,4 +3625,20 @@
     initialize()
   </script>
 </body>
+
+<script>
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.action === 'setView' && typeof setView === 'function') {
+      setView(e.data.view);
+    }
+  });
+  window.addEventListener('hashchange', function() {
+    var h = window.location.hash.replace('#', '');
+    if (h && typeof setView === 'function') setView(h);
+  });
+  window.addEventListener('DOMContentLoaded', function() {
+    var h = window.location.hash.replace('#', '');
+    if (h && typeof setView === 'function') setView(h);
+  });
+</script>
 </html>
