@@ -1849,10 +1849,10 @@
         saveProcedureRatesToStorage()
       }
       if (Array.isArray(settings.get('finalized_months'))) {
-        state.finalizedMonths = settings.get('finalized_months')
+        state.finalizedMonths = Array.from(new Set([...settings.get('finalized_months'), ...(state.finalizedMonths || [])]))
       }
       if (Array.isArray(settings.get('admin_finalized_months'))) {
-        state.adminFinalizedMonths = settings.get('admin_finalized_months')
+        state.adminFinalizedMonths = Array.from(new Set([...settings.get('admin_finalized_months'), ...(state.adminFinalizedMonths || [])]))
       }
       if (settings.get('password_hashes')) {
         passwordHashes = normalizePasswordHashes(settings.get('password_hashes'))
@@ -1862,9 +1862,9 @@
       savePasswordHashesToStorage()
     }
 
-    function syncSilently() {
+    function syncSilently(options = {}) {
       if (!supabaseClient) return
-      syncNow({ silent: true })
+      syncNow({ silent: true, ...options })
     }
 
     function mapRemoteEntry(entry) {
@@ -1967,6 +1967,7 @@
 
     async function syncNow(options = {}) {
       const silent = options.silent === true
+      const syncSettings = options.syncSettings === true || (options.syncSettings === undefined && !silent)
       if (!supabaseClient) {
         setSyncStatus('로컬 모드', 'yellow')
         if (!silent) alert('Supabase URL과 anon key를 먼저 입력해주세요.')
@@ -2028,15 +2029,25 @@
         }
       }
 
-      const { error: settingsError } = await supabaseClient
-        .from(SETTINGS_TABLE)
-        .upsert(getSettingsPayload(), { onConflict: 'key' })
+      if (syncSettings) {
+        const { data: currentSettingsRows, error: currentSettingsError } = await supabaseClient
+          .from(SETTINGS_TABLE)
+          .select('*')
 
-      if (settingsError) {
-        console.error(settingsError)
-        setSyncStatus('동기화 실패', 'red')
-        if (!silent) alert('Supabase 설정 저장에 실패했습니다. app_settings 테이블을 확인해주세요.')
-        return
+        if (!currentSettingsError && currentSettingsRows) {
+          applyRemoteSettings(currentSettingsRows)
+        }
+
+        const { error: settingsError } = await supabaseClient
+          .from(SETTINGS_TABLE)
+          .upsert(getSettingsPayload(), { onConflict: 'key' })
+
+        if (settingsError) {
+          console.error(settingsError)
+          setSyncStatus('동기화 실패', 'red')
+          if (!silent) alert('Supabase 설정 저장에 실패했습니다. app_settings 테이블을 확인해주세요.')
+          return
+        }
       }
 
       const { data, error: loadError } = await supabaseClient
@@ -2051,19 +2062,23 @@
         return
       }
 
-      const { data: settingsRows, error: settingsLoadError } = await supabaseClient
-        .from(SETTINGS_TABLE)
-        .select('*')
+      state.entries = (data || []).map(mapRemoteEntry)
 
-      if (settingsLoadError) {
-        console.error(settingsLoadError)
-        setSyncStatus('동기화 실패', 'red')
-        if (!silent) alert('Supabase 설정을 불러오지 못했습니다. app_settings 테이블을 확인해주세요.')
-        return
+      if (syncSettings || options.pullSettingsFirst) {
+        const { data: settingsRows, error: settingsLoadError } = await supabaseClient
+          .from(SETTINGS_TABLE)
+          .select('*')
+
+        if (settingsLoadError) {
+          console.error(settingsLoadError)
+          setSyncStatus('동기화 실패', 'red')
+          if (!silent) alert('Supabase 설정을 불러오지 못했습니다. app_settings 테이블을 확인해주세요.')
+          return
+        }
+
+        applyRemoteSettings(settingsRows)
       }
 
-      state.entries = (data || []).map(mapRemoteEntry)
-      applyRemoteSettings(settingsRows)
       saveState()
       renderAll()
       setSyncStatus('동기화 완료', 'green')
@@ -2359,7 +2374,7 @@
         passwordHashes.roles.payroll = await hashPassword(newPassword)
       }
       savePasswordHashesToStorage()
-      syncSilently()
+      syncSilently({ syncSettings: true })
       hideAuthModalPasswordChange()
       alert('비밀번호가 변경되었습니다.')
     }
@@ -2413,7 +2428,7 @@
         passwordHashes.roles[role] = await hashPassword(newPassword)
       }
       savePasswordHashesToStorage()
-      syncSilently()
+      syncSilently({ syncSettings: true })
       hidePasswordChangeForm(type)
       alert('비밀번호가 변경되었습니다.')
     }
@@ -2693,7 +2708,7 @@
       if (!confirm('관리자 최종 제출 후 인센티브 확인 메뉴에서 최종 표를 볼 수 있습니다. 제출할까요?')) return
       state.adminFinalizedMonths.push(getAdminFinalizedKey(month))
       saveState()
-      syncSilently()
+      syncSilently({ syncSettings: true })
       renderAll()
     }
 
@@ -2723,7 +2738,7 @@
       state.finalizedMonths.push(getFinalizedKey(doctorId, month))
       state.inlineEditDate = null
       saveState()
-      syncSilently()
+      syncSilently({ syncSettings: true })
       renderRecords()
     }
 
@@ -3467,7 +3482,7 @@
       doctors.push({ id: `doctor-${Date.now()}`, name, role: 'doctor', incentiveRate: 10 })
       document.getElementById('newDoctorName').value = ''
       saveDoctors()
-      syncSilently()
+      syncSilently({ syncSettings: true })
       populateDoctorOptions()
       populateLogin()
       renderAll()
@@ -3478,7 +3493,7 @@
       if (!confirm(`${doctor.name} 원장님을 삭제할까요? 기존 입력 내역은 남아 있습니다.`)) return
       doctors = doctors.filter((item) => item.id !== doctorId)
       saveDoctors()
-      syncSilently()
+      syncSilently({ syncSettings: true })
       populateDoctorOptions()
       populateLogin()
       renderAll()
@@ -3541,7 +3556,7 @@
         upsertProcedureRateHistory(item.key, rate, effectiveFrom)
       }
       saveProcedureRatesToStorage()
-      syncSilently()
+      syncSilently({ syncSettings: true })
       renderAll()
       alert('인센티브 %와 변경 시점을 저장했습니다.')
     }
