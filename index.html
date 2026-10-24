@@ -996,7 +996,7 @@
             <label>
               월
               <div class="date-input-group">
-                <input id="recordMonth" type="month" onchange="renderAll()" onclick="try { this.showPicker(); } catch(e) {}" />
+                <input id="recordMonth" type="month" onchange="refreshMonthlyView()" onclick="try { this.showPicker(); } catch(e) {}" />
                 <button type="button" class="date-nav-btn" onclick="adjustMonth('recordMonth', -1)">&lt;</button>
                 <button type="button" class="date-nav-btn" onclick="adjustMonth('recordMonth', 1)">&gt;</button>
               </div>
@@ -1149,7 +1149,7 @@
             <label>
               월
               <div class="date-input-group">
-                <input id="summaryMonth" type="month" onchange="renderAll()" onclick="try { this.showPicker(); } catch(e) {}" />
+                <input id="summaryMonth" type="month" onchange="refreshMonthlyView()" onclick="try { this.showPicker(); } catch(e) {}" />
                 <button type="button" class="date-nav-btn" onclick="adjustMonth('summaryMonth', -1)">&lt;</button>
                 <button type="button" class="date-nav-btn" onclick="adjustMonth('summaryMonth', 1)">&gt;</button>
               </div>
@@ -1443,6 +1443,28 @@
     }
 
     let supabaseClient = null
+    const SYNC_QUEUE_KEY = `${STORAGE_KEY}:pending-v2`
+    const ENTRY_COLUMNS = 'id,date,doctor_id,treatment_count,placenta_dina_count,revenue,linda_revenue,su_revenue,memo,created_at,updated_at,deleted_at'
+    const ENTRY_FIELDS = ['count', 'placentaDinaCount', 'revenue', 'lindaRevenue', 'suRevenue', 'memo']
+    let syncQueue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '{"entries":[],"settings":[]}')
+    let savedEntries = new Map()
+    let savedSettings = new Map()
+    const entryScopes = new Map()
+    let syncTask = Promise.resolve()
+    let activeSyncs = 0
+    let settingsLoadedAt = 0
+
+    function persistSyncQueue() {
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(syncQueue))
+    }
+
+    function rememberEntries() {
+      savedEntries = new Map(state.entries.map((entry) => [getEntrySyncKey(entry), structuredClone(entry)]))
+    }
+
+    function rememberSettings() {
+      savedSettings = new Map(getSettingsPayload().map((row) => [row.key, structuredClone(row.value)]))
+    }
 
     function todayString() {
       const now = new Date()
@@ -1762,16 +1784,38 @@
       const saved = localStorage.getItem(STORAGE_KEY)
       if (!saved) return
       try {
+        if (!localStorage.getItem(`${STORAGE_KEY}:before-sync-v2`)) localStorage.setItem(`${STORAGE_KEY}:before-sync-v2`, saved)
         const parsed = JSON.parse(saved)
         state.entries = parsed.entries || []
         state.finalizedMonths = parsed.finalizedMonths || []
         state.adminFinalizedMonths = parsed.adminFinalizedMonths || []
+        rememberEntries()
       } catch (error) {
         console.warn('저장된 데이터를 불러오지 못했습니다.', error)
       }
     }
 
-    function saveState() {
+    function saveState(options = {}) {
+      if (!options.remote) {
+        const next = new Map(state.entries.map((entry) => [getEntrySyncKey(entry), entry]))
+        for (const [key, entry] of next) {
+          const before = savedEntries.get(key)
+          const changes = Object.fromEntries(ENTRY_FIELDS
+            .filter((field) => (entry[field] ?? (field === 'memo' ? '' : 0)) !== (before?.[field] ?? (field === 'memo' ? '' : 0)))
+            .map((field) => [field, entry[field]]))
+          if (!Object.keys(changes).length) continue
+          syncQueue.entries.push({
+            operationId: crypto.randomUUID(), doctorId: entry.doctorId, date: entry.date,
+            changes, expected: Object.fromEntries(Object.keys(changes).map((field) => [field, before?.[field] ?? (field === 'memo' ? '' : 0)])),
+            additive: options.additive || null,
+          })
+        }
+        for (const [key, entry] of savedEntries) {
+          if (!next.has(key)) syncQueue.entries.push({ operationId: crypto.randomUUID(), doctorId: entry.doctorId, date: entry.date, remove: true, expected: Object.fromEntries(ENTRY_FIELDS.map((field) => [field, entry[field] ?? (field === 'memo' ? '' : 0)])) })
+        }
+        persistSyncQueue()
+      }
+      rememberEntries()
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         entries: state.entries,
         finalizedMonths: state.finalizedMonths,
@@ -1796,6 +1840,7 @@
       document.getElementById('supabaseUrl').value = config.url || ''
       document.getElementById('supabaseAnonKey').value = config.anonKey || ''
       createSupabaseClient(config)
+      rememberSettings()
       if (supabaseClient) syncNow({ silent: true, pullSettingsFirst: true })
     }
 
@@ -1838,7 +1883,7 @@
 
     function applyRemoteSettings(rows) {
       const settings = new Map((rows || []).map((row) => [row.key, row.value]))
-      if (Array.isArray(settings.get('doctors'))) {
+      if (Array.isArray(settings.get('doctors')) && JSON.stringify(doctors) !== JSON.stringify(settings.get('doctors'))) {
         doctors = settings.get('doctors')
         saveDoctors()
         populateDoctorOptions()
@@ -1864,7 +1909,8 @@
 
     function syncSilently(options = {}) {
       if (!supabaseClient) return
-      syncNow({ silent: true, ...options })
+      if (options.syncSettings) queueSettingsChanges()
+      return syncNow({ silent: true, ...options })
     }
 
     function mapRemoteEntry(entry) {
@@ -1950,139 +1996,169 @@
       }
     }
 
-    async function deleteRemoteEntry(entryId) {
-      if (!supabaseClient) return
-      const { error } = await supabaseClient
-        .from('precision_injection_entries')
-        .delete()
-        .eq('id', entryId)
-
-      if (error) {
-        console.error(error)
-        setSyncStatus('동기화 실패', 'red')
-        return
-      }
-      syncSilently()
+    function deleteRemoteEntry() {
+      return syncSilently()
     }
 
-    async function syncNow(options = {}) {
-      const silent = options.silent === true
-      const syncSettings = options.syncSettings === true || (options.syncSettings === undefined && !silent)
-      if (!supabaseClient) {
-        setSyncStatus('로컬 모드', 'yellow')
-        if (!silent) alert('Supabase URL과 anon key를 먼저 입력해주세요.')
-        return
+    function queueSettingsChanges() {
+      for (const row of getSettingsPayload()) {
+        const expected = savedSettings.get(row.key)
+        if (JSON.stringify(expected) === JSON.stringify(row.value)) continue
+        syncQueue.settings.push({ key: row.key, expected: expected ?? null, value: structuredClone(row.value) })
       }
+      rememberSettings()
+      persistSyncQueue()
+    }
 
-      setSyncStatus('동기화 중', 'yellow')
+    async function refreshSettings(force = false) {
+      if (!force && Date.now() - settingsLoadedAt < 60000) return
+      const { data, error } = await supabaseClient.from(SETTINGS_TABLE).select('key,value')
+      if (error) throw error
+      const rows = new Map((data || []).map((row) => [row.key, row]))
+      for (const change of syncQueue.settings) rows.set(change.key, { key: change.key, value: change.value })
+      applyRemoteSettings([...rows.values()])
+      rememberSettings()
+      settingsLoadedAt = Date.now()
+    }
 
-      if (options.pullSettingsFirst) {
-        const { data: firstSettingsRows, error: firstSettingsError } = await supabaseClient
-          .from(SETTINGS_TABLE)
-          .select('*')
+    function visibleEntryScope() {
+      if (state.view === 'records' && state.auth.personalDoctorId) return { month: document.getElementById('recordMonth').value || monthString(), doctorId: state.auth.personalDoctorId }
+      if (state.view === 'adminRecords' && state.auth.admin) return { month: document.getElementById('adminRecordMonth').value || monthString(), doctorId: document.getElementById('adminDoctorFilter').value || 'all' }
+      if (state.view === 'summary' && state.auth.payroll) return { month: document.getElementById('summaryMonth').value || previousMonthString(), doctorId: 'all' }
+      return null
+    }
 
-        if (!firstSettingsError) {
-          applyRemoteSettings(firstSettingsRows)
-        }
+    function matchesScope(entry, scope) {
+      return entry.date.startsWith(scope.month) && (scope.doctorId === 'all' || entry.doctorId === scope.doctorId)
+    }
+
+    async function refreshEntries(scope, forceFull = false) {
+      if (!scope) return
+      const key = `${scope.month}:${scope.doctorId}`
+      const cached = entryScopes.get(key)
+      const cursor = forceFull || !cached?.fullAt || Date.now() - cached.fullAt > 300000 ? null : cached.cursor
+      const since = cursor ? new Date(new Date(cursor).getTime() - 10000).toISOString() : null
+      const dates = getDatesInMonth(scope.month)
+      const rows = []
+      // Subsequent requests include only changed rows and deletion tombstones.
+      for (let offset = 0; ; offset += 500) {
+        let query = supabaseClient.from('precision_injection_entries').select(ENTRY_COLUMNS)
+          .gte('date', dates[0]).lte('date', dates[dates.length - 1])
+          .order('updated_at').order('id').range(offset, offset + 499)
+        if (scope.doctorId !== 'all') query = query.eq('doctor_id', scope.doctorId)
+        if (since) query = query.gte('updated_at', since)
+        const { data, error } = await query
+        if (error) throw error
+        rows.push(...data)
+        if (data.length < 500) break
       }
-
-      const { data: remoteData, error: remoteLoadError } = await supabaseClient
-        .from('precision_injection_entries')
-        .select('*')
-
-      if (remoteLoadError) {
-        console.error(remoteLoadError)
-        setSyncStatus('동기화 실패', 'red')
-        if (!silent) alert('Supabase 데이터를 불러오지 못했습니다. SQL 스키마와 RLS 설정을 확인해주세요.')
-        return
+      const pendingKeys = new Set(syncQueue.entries.map((change) => `${change.doctorId}|${change.date}`))
+      if (!cursor) state.entries = state.entries.filter((entry) => !matchesScope(entry, scope) || pendingKeys.has(getEntrySyncKey(entry)))
+      for (const row of rows) {
+        const entry = mapRemoteEntry(row)
+        const entryKey = getEntrySyncKey(entry)
+        if (pendingKeys.has(entryKey)) continue
+        state.entries = state.entries.filter((item) => getEntrySyncKey(item) !== entryKey)
+        if (!row.deleted_at) state.entries.push(entry)
       }
+      const latest = rows.reduce((value, row) => !value || row.updated_at > value ? row.updated_at : value, cursor || null)
+      entryScopes.set(key, { cursor: latest, fullAt: cursor ? cached.fullAt : Date.now() })
+      saveState({ remote: true })
+    }
 
-      const remoteEntries = (remoteData || []).map(mapRemoteEntry)
-      const merged = mergeEntriesForSync(state.entries, remoteEntries)
+    function requestVisibleEntries() {
+      const scope = visibleEntryScope()
+      if (!supabaseClient || !scope) return
+      const key = `${scope.month}:${scope.doctorId}`
+      if (entryScopes.has(key)) return
+      entryScopes.set(key, { loading: true })
+      syncNow({ silent: true, scope }).then((ok) => {
+        if (!ok) entryScopes.delete(key)
+      })
+    }
 
-      if (merged.entries.length) {
-        const payload = merged.entries.map(getEntryPayload)
-
-        const { error } = await supabaseClient
-          .from('precision_injection_entries')
-          .upsert(payload, { onConflict: 'id' })
-
+    async function flushPendingChanges() {
+      const blockedEntries = new Set()
+      const blockedSettings = new Set()
+      const conflicts = []
+      while (true) {
+        const change = syncQueue.entries.find((item) => !blockedEntries.has(`${item.doctorId}|${item.date}`))
+        if (!change) break
+        const { data, error } = await supabaseClient.rpc('save_incentive_entry_v2', { operation: change })
         if (error) {
-          console.error(error)
-          setSyncStatus('동기화 실패', 'red')
-          if (!silent) alert('Supabase 저장에 실패했습니다. SQL 스키마와 RLS 설정을 확인해주세요.')
-          return
+          if (!String(error.message).includes('SYNC_CONFLICT')) throw error
+          blockedEntries.add(`${change.doctorId}|${change.date}`)
+          conflicts.push({ ...error, pendingEntry: change })
+          continue
+        }
+        syncQueue.entries.splice(syncQueue.entries.indexOf(change), 1)
+        persistSyncQueue()
+        const key = `${change.doctorId}|${change.date}`
+        if (!syncQueue.entries.some((item) => `${item.doctorId}|${item.date}` === key)) {
+          state.entries = state.entries.filter((entry) => getEntrySyncKey(entry) !== key)
+          if (data && !data.deleted_at) state.entries.push(mapRemoteEntry(data))
+          saveState({ remote: true })
         }
       }
-
-      if (merged.duplicateIds.length) {
-        const { error: deleteDuplicateError } = await supabaseClient
-          .from('precision_injection_entries')
-          .delete()
-          .in('id', merged.duplicateIds)
-
-        if (deleteDuplicateError) {
-          console.error(deleteDuplicateError)
-          setSyncStatus('동기화 실패', 'red')
-          if (!silent) alert('중복 데이터 정리에 실패했습니다. 다시 동기화해주세요.')
-          return
+      while (true) {
+        const change = syncQueue.settings.find((item) => !blockedSettings.has(item.key))
+        if (!change) break
+        const { data, error } = await supabaseClient.rpc('save_incentive_setting_v2', { change })
+        if (error) {
+          if (!String(error.message).includes('SYNC_CONFLICT')) throw error
+          blockedSettings.add(change.key)
+          conflicts.push({ ...error, pendingSetting: change })
+          continue
         }
+        syncQueue.settings.splice(syncQueue.settings.indexOf(change), 1)
+        persistSyncQueue()
+        if (!syncQueue.settings.some((item) => item.key === change.key)) applyRemoteSettings([data])
+        rememberSettings()
       }
+      if (conflicts.length) throw conflicts[0]
+    }
 
-      if (syncSettings) {
-        const { data: currentSettingsRows, error: currentSettingsError } = await supabaseClient
-          .from(SETTINGS_TABLE)
-          .select('*')
-
-        if (!currentSettingsError && currentSettingsRows) {
-          applyRemoteSettings(currentSettingsRows)
-        }
-
-        const { error: settingsError } = await supabaseClient
-          .from(SETTINGS_TABLE)
-          .upsert(getSettingsPayload(), { onConflict: 'key' })
-
-        if (settingsError) {
-          console.error(settingsError)
-          setSyncStatus('동기화 실패', 'red')
-          if (!silent) alert('Supabase 설정 저장에 실패했습니다. app_settings 테이블을 확인해주세요.')
-          return
-        }
+    function syncNow(options = {}) {
+      const scope = options.scope || visibleEntryScope()
+      activeSyncs++
+      const run = async () => {
+        if (!supabaseClient) { activeSyncs--; setSyncStatus('로컬 모드', 'yellow'); return false }
+        setSyncStatus('동기화 중', 'yellow')
+        try {
+          await flushPendingChanges()
+          await refreshSettings(options.pullSettingsFirst || !options.silent)
+          if (!state.inlineEditDate && !state.adminBulkEdit) await refreshEntries(scope, !options.silent)
+          if (!state.inlineEditDate && !state.adminBulkEdit) renderAll()
+          setSyncStatus('동기화 완료', 'green')
+          return true
+        } catch (error) {
+          console.error('Supabase sync:', error.code || '', error.message || 'request failed')
+          const conflict = String(error.message).includes('SYNC_CONFLICT')
+          setSyncStatus(conflict ? '다른 기기의 수정 확인 필요' : '동기화 실패 · 입력 보관됨', 'red')
+          if (conflict) {
+            const target = error.pendingEntry ? `${error.pendingEntry.date}의 대기 입력` : '충돌한 설정 변경'
+            if (confirm(`다른 기기에서 같은 항목을 수정해 서버 데이터는 덮어쓰지 않았습니다.\n서버 내역을 유지하고 이 기기의 ${target}을 취소할까요?\n취소를 누르면 입력을 보관합니다.`)) {
+              localStorage.setItem(`${SYNC_QUEUE_KEY}:conflict-backup:${Date.now()}`, JSON.stringify(syncQueue))
+              if (error.pendingEntry) {
+                const change = error.pendingEntry
+                syncQueue.entries = syncQueue.entries.filter((item) => item.doctorId !== change.doctorId || item.date !== change.date)
+                persistSyncQueue()
+                await refreshEntries({ month: change.date.slice(0, 7), doctorId: change.doctorId }, true)
+              } else {
+                syncQueue.settings = syncQueue.settings.filter((item) => item.key !== error.pendingSetting.key)
+                persistSyncQueue()
+                await refreshSettings(true)
+              }
+              if (!state.inlineEditDate && !state.adminBulkEdit) renderAll()
+              setSyncStatus(syncQueue.entries.length || syncQueue.settings.length ? '미동기화 입력 확인 필요' : '동기화 완료', syncQueue.entries.length || syncQueue.settings.length ? 'yellow' : 'green')
+            }
+          }
+          else if (!options.silent) alert('동기화하지 못했습니다. 입력은 이 기기에 보관되어 있으며 다시 동기화할 수 있습니다.')
+          return false
+        } finally { activeSyncs-- }
       }
-
-      const { data, error: loadError } = await supabaseClient
-        .from('precision_injection_entries')
-        .select('*')
-        .order('date', { ascending: false })
-
-      if (loadError) {
-        console.error(loadError)
-        setSyncStatus('동기화 실패', 'red')
-        if (!silent) alert('Supabase 데이터를 불러오지 못했습니다. SQL 스키마와 RLS 설정을 확인해주세요.')
-        return
-      }
-
-      state.entries = (data || []).map(mapRemoteEntry)
-
-      if (syncSettings || options.pullSettingsFirst) {
-        const { data: settingsRows, error: settingsLoadError } = await supabaseClient
-          .from(SETTINGS_TABLE)
-          .select('*')
-
-        if (settingsLoadError) {
-          console.error(settingsLoadError)
-          setSyncStatus('동기화 실패', 'red')
-          if (!silent) alert('Supabase 설정을 불러오지 못했습니다. app_settings 테이블을 확인해주세요.')
-          return
-        }
-
-        applyRemoteSettings(settingsRows)
-      }
-
-      saveState()
-      renderAll()
-      setSyncStatus('동기화 완료', 'green')
-      if (!silent) alert('Supabase 저장 및 불러오기를 완료했습니다.')
+      syncTask = syncTask.then(run, run)
+      return syncTask
     }
 
     function populateLogin() {
@@ -2444,6 +2520,7 @@
         document.getElementById(`nav${name[0].toUpperCase() + name.slice(1)}`).classList.toggle('active', name === view)
       }
       renderAll()
+      if (supabaseClient && activeSyncs === 0) syncNow({ silent: true })
     }
 
     function resetForm() {
@@ -2593,7 +2670,7 @@
         state.entries.push(nextEntry)
       }
 
-      saveState()
+      saveState({ additive: { type, amount: revenue, patientName } })
       syncSilently()
       document.getElementById(ids.revenue).value = ''
       document.getElementById(ids.patient).value = ''
@@ -3151,11 +3228,17 @@
     function handleAdminFilterChange() {
       state.inlineEditDate = null
       state.adminBulkEdit = false
+      refreshMonthlyView()
+    }
+
+    function refreshMonthlyView() {
       renderAll()
+      if (supabaseClient && activeSyncs === 0) syncNow({ silent: true })
     }
 
     function toggleAdminBulkEdit() {
       if (!state.auth.admin) return
+      if (activeSyncs) return alert('동기화가 끝난 후 수정해주세요.')
       state.inlineEditDate = null
       state.adminBulkEdit = !state.adminBulkEdit
       renderAdminRecords()
@@ -3237,6 +3320,7 @@
     }
 
     function editPersonalDate(date) {
+      if (activeSyncs) return alert('동기화가 끝난 후 수정해주세요.')
       if (isPersonalMonthFinalized(date.slice(0, 7))) return
       state.inlineEditDate = date
       renderRecords()
@@ -3252,6 +3336,7 @@
     }
 
     function editAdminDate(doctorId, date) {
+      if (activeSyncs) return alert('동기화가 끝난 후 수정해주세요.')
       state.adminBulkEdit = false
       state.inlineEditDate = `admin:${doctorId}:${date}`
       renderAdminRecords()
@@ -3268,6 +3353,7 @@
     }
 
     function editAdminEntry(entryId) {
+      if (activeSyncs) return alert('동기화가 끝난 후 수정해주세요.')
       state.adminBulkEdit = false
       state.inlineEditDate = `adminEntry:${entryId}`
       renderAdminRecords()
@@ -3471,6 +3557,7 @@
       renderSummary()
       renderDoctorManageList()
       renderProcedureRates()
+      requestVisibleEntries()
     }
 
     function addDoctor() {
