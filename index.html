@@ -750,6 +750,38 @@
       background: var(--bg);
       border-color: var(--muted);
     }
+
+    .calc-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .calc-input-wrap input {
+      width: 100%;
+      padding-right: 125px;
+      box-sizing: border-box;
+    }
+
+    .calc-result-badge {
+      position: absolute;
+      right: 8px;
+      pointer-events: none;
+      font-size: 13px;
+      font-weight: 700;
+      color: #2563eb;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 3px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+      transition: opacity 0.15s ease;
+    }
+
+    .calc-result-badge.hidden {
+      display: none;
+    }
   </style>
 
   <style>
@@ -848,7 +880,10 @@
           </label>
           <label>
             대용량정밀약침 매출(원)
-            <input id="entryRevenue" type="text" inputmode="numeric" pattern="[0-9,]*" required placeholder="" />
+            <div class="calc-input-wrap">
+              <input id="entryRevenue" type="text" inputmode="text" required placeholder="" />
+              <span id="entryRevenueResult" class="calc-result-badge hidden"></span>
+            </div>
           </label>
           <label>
             자하거/디나 시술 건수(명)
@@ -2530,12 +2565,95 @@
       document.getElementById('entryPassword').value = ''
       document.getElementById('entryCount').value = ''
       document.getElementById('entryRevenue').value = ''
+      updateCalcResultBadge('entryRevenue', 'entryRevenueResult')
       document.getElementById('entryPlacentaDinaCount').value = ''
       document.getElementById('saveNotice').classList.add('hidden')
     }
 
     function toDigits(value) {
       return String(value || '').replace(/\D/g, '')
+    }
+
+    function evaluateMathExpression(str) {
+      if (!str) return null
+      const clean = String(str).replace(/,/g, '').trim()
+      if (!clean) return null
+      // 숫자 및 사칙연산 기호(+ - * /), 괄호만 허용
+      if (!/^[\d\s+\-*/().]+$/.test(clean)) return null
+      try {
+        const fn = new Function(`"use strict"; return (${clean});`)
+        const val = fn()
+        if (typeof val === 'number' && !isNaN(val) && isFinite(val) && val >= 0) {
+          return Math.round(val)
+        }
+      } catch (e) {
+        return null
+      }
+      return null
+    }
+
+    function updateCalcResultBadge(inputId, badgeId) {
+      const input = document.getElementById(inputId)
+      const badge = document.getElementById(badgeId)
+      if (!input || !badge) return
+      const rawVal = input.value || ''
+      // 수식 기호가 포함되어 있는지 확인
+      const hasOperator = /[+\-*/]/.test(rawVal)
+      if (hasOperator) {
+        const evaluated = evaluateMathExpression(rawVal)
+        if (evaluated !== null) {
+          badge.textContent = `= ${evaluated.toLocaleString('ko-KR')}원`
+          badge.classList.remove('hidden')
+          return
+        }
+      }
+      badge.textContent = ''
+      badge.classList.add('hidden')
+    }
+
+    function bindCalcNumberInput(inputId, badgeId) {
+      const input = document.getElementById(inputId)
+      if (!input) return
+      input.addEventListener('input', (event) => {
+        const val = event.target.value
+        // 수식 연산자(+ - * /)가 없으면 기존처럼 콤마 포맷팅 유지
+        if (!/[+\-*/]/.test(val)) {
+          event.target.value = formatNumberInput(val)
+        }
+        updateCalcResultBadge(inputId, badgeId)
+      })
+      input.addEventListener('blur', (event) => {
+        const val = event.target.value
+        if (/[+\-*/]/.test(val)) {
+          const evaluated = evaluateMathExpression(val)
+          if (evaluated !== null) {
+            event.target.value = evaluated.toLocaleString('ko-KR')
+          }
+        }
+        updateCalcResultBadge(inputId, badgeId)
+      })
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          const val = event.target.value
+          if (/[+\-*/]/.test(val)) {
+            const evaluated = evaluateMathExpression(val)
+            if (evaluated !== null) {
+              event.target.value = evaluated.toLocaleString('ko-KR')
+              updateCalcResultBadge(inputId, badgeId)
+            }
+          }
+        }
+      })
+    }
+
+    function getCalculatedValue(inputEl) {
+      if (!inputEl) return 0
+      const raw = inputEl.value || ''
+      if (/[+\-*/]/.test(raw)) {
+        const evalVal = evaluateMathExpression(raw)
+        if (evalVal !== null) return evalVal
+      }
+      return Number(toDigits(raw) || 0)
     }
 
     function formatNumberInput(value) {
@@ -2564,7 +2682,7 @@
       const doctorId = document.getElementById('entryDoctor').value
       const password = document.getElementById('entryPassword').value
       const count = toDigits(document.getElementById('entryCount').value)
-      const revenue = toDigits(document.getElementById('entryRevenue').value)
+      const revenue = getCalculatedValue(document.getElementById('entryRevenue'))
       const placentaDinaCount = toDigits(document.getElementById('entryPlacentaDinaCount').value)
 
       if (!doctorId) {
@@ -3220,7 +3338,8 @@
       document.getElementById('entryDate').value = entry.date
       document.getElementById('entryDoctor').value = entry.doctorId
       document.getElementById('entryCount').value = entry.count
-      document.getElementById('entryRevenue').value = entry.revenue
+      document.getElementById('entryRevenue').value = Number(entry.revenue || 0).toLocaleString('ko-KR')
+      updateCalcResultBadge('entryRevenue', 'entryRevenueResult')
       document.getElementById('entryPlacentaDinaCount').value = entry.placentaDinaCount || 0
       setView('input')
     }
@@ -3707,7 +3826,8 @@
       for (const id of ['entryCount', 'entryPlacentaDinaCount']) {
         bindDigitsOnlyInput(id)
       }
-      for (const id of ['entryRevenue', 'lindaRevenue', 'suRevenue']) {
+      bindCalcNumberInput('entryRevenue', 'entryRevenueResult')
+      for (const id of ['lindaRevenue', 'suRevenue']) {
         bindCommaNumberInput(id)
       }
       bindEnterLogin('lindaLoginPin', 'linda')
